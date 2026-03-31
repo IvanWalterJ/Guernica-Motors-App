@@ -23,7 +23,7 @@ const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1503376760367-11ea8eb2
 
 export default function VehicleDetail() {
   const { id } = useParams();
-  const { getVehicleById, incrementViews, availableVehicles, appointmentsCount, setAppointmentsCount } = useAppContext();
+  const { getVehicleById, incrementViews, availableVehicles, appointmentsCount, setAppointmentsCount, isLoading, addLeadAndAppointment } = useAppContext();
 
   const vehicle = id ? getVehicleById(id) : undefined;
 
@@ -49,16 +49,20 @@ export default function VehicleDetail() {
     version: "",
   });
 
-  // Track views and scroll to top when vehicle changes
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: "instant" });
-    setActivePhoto(0);
-    if (vehicle) {
-      incrementViews(vehicle.id);
-      setDownPayment(Math.round(vehicle.price * 0.3));
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [vehicle?.id]);
+  // ── Loading ──────────────────────────────────────────────────────────────────
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-transparent flex items-center justify-center relative z-10">
+        <motion.div 
+          animate={{ opacity: [0.5, 1, 0.5] }} 
+          transition={{ repeat: Infinity, duration: 1.5 }}
+          className="text-white text-sm tracking-widest uppercase font-bold"
+        >
+          Cargando Vehículo...
+        </motion.div>
+      </div>
+    );
+  }
 
   // ── Not found ────────────────────────────────────────────────────────────────
 
@@ -106,21 +110,31 @@ export default function VehicleDetail() {
     return Math.round(payment);
   };
 
-  const handleSchedule = () => {
+  const handleSchedule = async () => {
     if (selectedDate === null || !selectedTime || !clientName.trim() || !clientPhone.trim()) return;
+    
     const date = nextDays[selectedDate];
     const dateString = date.toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" });
-    const message = `Hola, soy ${clientName.trim()}. Me gustaría agendar una visita para ver el ${vehicle.brand} ${vehicle.model} el día ${dateString} a las ${selectedTime}hs. Mi teléfono es ${clientPhone.trim()}.`;
-    window.open(`https://wa.me/5491112345678?text=${encodeURIComponent(message)}`, "_blank");
-    setIsScheduled(true);
-    setAppointmentsCount(appointmentsCount + 1);
-    setTimeout(() => {
-      setIsScheduled(false);
-      setSelectedDate(null);
-      setSelectedTime(null);
-      setClientName("");
-      setClientPhone("");
-    }, 5000);
+    
+    try {
+      // 1. Guardar en Supabase automáticamente
+      await addLeadAndAppointment({
+        name: clientName.trim(),
+        phone: clientPhone.trim(),
+        vehicle_interested: `${vehicle.brand} ${vehicle.model}`,
+        status: 'nuevo'
+      }, {
+        appointment_date: date.toISOString().split('T')[0],
+        appointment_time: selectedTime,
+        vehicle_id: vehicle.id
+      });
+
+      // 2. Mostrar Popup de éxito
+      setIsScheduled(true);
+    } catch (error) {
+      console.error("Error agendando cita:", error);
+      alert("Hubo un problema al agendar. Por favor, intenta por WhatsApp.");
+    }
   };
 
   const handleWhatsApp = () => {
@@ -377,14 +391,44 @@ export default function VehicleDetail() {
                 <AnimatePresence>
                   {isScheduled && (
                     <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      className="absolute inset-0 z-20 bg-[#0A0A0A]/95 backdrop-blur-md flex flex-col items-center justify-center text-center p-8"
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.9 }}
+                      className="absolute inset-0 z-50 bg-[#0A0A0A]/95 backdrop-blur-md flex flex-col items-center justify-center text-center p-8 overflow-y-auto"
                     >
-                      <CheckCircle className="w-16 h-16 text-green-400 mb-6" />
-                      <h3 className="text-2xl font-light text-white mb-2">¡Visita Agendada!</h3>
-                      <p className="text-gray-400 font-light text-sm">Te esperamos en nuestra agencia. Te enviamos los detalles por email.</p>
+                      <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mb-6">
+                        <CheckCircle className="w-12 h-12 text-green-400" />
+                      </div>
+                      <h3 className="text-2xl font-light text-white mb-4">¡Cita Registrada!</h3>
+                      <p className="text-gray-400 font-light text-sm mb-8 leading-relaxed">
+                        Tus datos han sido recibidos. Un asesor revisará tu solicitud y te contactará a la brevedad.
+                      </p>
+                      <div className="flex flex-col gap-3 w-full">
+                        <button
+                          onClick={() => {
+                            const date = nextDays[selectedDate!];
+                            const dateString = date.toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" });
+                            const message = `Hola, acabo de agendar una visita para el ${vehicle.brand} ${vehicle.model} el día ${dateString} a las ${selectedTime}hs. Me gustaría confirmar la recepción.`;
+                            window.open(`https://wa.me/5491112345678?text=${encodeURIComponent(message)}`, "_blank");
+                          }}
+                          className="w-full py-4 bg-[#25D366] text-white text-xs font-bold uppercase tracking-widest rounded-full hover:bg-[#128C7E] transition-colors flex items-center justify-center gap-2"
+                        >
+                          <MessageCircle className="w-4 h-4" />
+                          Hablar con un asesor ya
+                        </button>
+                        <button
+                          onClick={() => {
+                            setIsScheduled(false);
+                            setSelectedDate(null);
+                            setSelectedTime(null);
+                            setClientName("");
+                            setClientPhone("");
+                          }}
+                          className="w-full py-4 bg-white/5 text-gray-400 text-[10px] font-bold uppercase tracking-widest rounded-full border border-white/10"
+                        >
+                          Volver al detalle
+                        </button>
+                      </div>
                     </motion.div>
                   )}
                 </AnimatePresence>

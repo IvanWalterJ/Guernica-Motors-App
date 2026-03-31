@@ -1,14 +1,19 @@
-import { useState } from "react";
-import { motion, AnimatePresence } from "motion/react";
-import { DollarSign, TrendingUp, TrendingDown, CreditCard, Activity, Download, X, Save } from "lucide-react";
-import CustomSelect from "../ui/CustomSelect";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
+import { useAppContext } from "../../context/AppContext";
 
 export default function Finances() {
+  const { transactions, addTransaction } = useAppContext();
   const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
   const [transactionType, setTransactionType] = useState<'income' | 'expense'>('income');
   const [filterPeriod, setFilterPeriod] = useState('30');
   const [currency, setCurrency] = useState('USD');
-  const exchangeRate = 1050;
+  const [formData, setFormData] = useState({
+    description: "",
+    amount: "",
+    date: new Date().toISOString().split('T')[0],
+    category: "venta"
+  });
+  const exchangeRate = 1250;
 
   const formatCurrency = (value: number) => {
     const amount = currency === 'ARS' ? value * exchangeRate : value;
@@ -19,20 +24,44 @@ export default function Finances() {
     }).format(amount);
   };
 
+  const totalIncome = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + Number(t.amount), 0);
+  const totalExpense = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + Number(t.amount), 0);
+  const netMargin = totalIncome > 0 ? ((totalIncome - totalExpense) / totalIncome * 100).toFixed(1) : '0';
+
   const stats = [
-    { name: 'Ingresos (Mes)', value: formatCurrency(1250000), change: '+12.5%', trend: 'up' },
-    { name: 'Gastos Operativos', value: formatCurrency(85000), change: '-2.4%', trend: 'down' },
-    { name: 'Margen Neto', value: '18.2%', change: '+1.1%', trend: 'up' },
-    { name: 'Vehículos Financiados', value: '14', change: '+3', trend: 'up' },
+    { name: 'Ingresos Totales', value: formatCurrency(totalIncome), change: '+100%', trend: 'up' },
+    { name: 'Gastos Operativos', value: formatCurrency(totalExpense), change: '-0%', trend: 'down' },
+    { name: 'Margen Neto', value: `${netMargin}%`, change: 'Real', trend: 'up' },
+    { name: 'Transacciones', value: transactions.length.toString(), change: 'Vivas', trend: 'up' },
   ];
 
-  const recentTransactions = [
-    { id: 'TRX-001', date: '2026-03-30', description: 'Venta - Porsche 911 GT3', amount: `+${formatCurrency(285000)}`, type: 'income', status: 'Completado' },
-    { id: 'TRX-002', date: '2026-03-29', description: 'Pago Proveedor - Logística', amount: `-${formatCurrency(2400)}`, type: 'expense', status: 'Completado' },
-    { id: 'TRX-003', date: '2026-03-28', description: 'Reserva - Audi RS e-tron GT', amount: `+${formatCurrency(15000)}`, type: 'income', status: 'Pendiente' },
-    { id: 'TRX-004', date: '2026-03-27', description: 'Mantenimiento Showroom', amount: `-${formatCurrency(1200)}`, type: 'expense', status: 'Completado' },
-    { id: 'TRX-005', date: '2026-03-25', description: 'Venta - BMW M4 Competition', amount: `+${formatCurrency(115000)}`, type: 'income', status: 'Completado' },
-  ];
+  // Agrupar por mes para el gráfico
+  const chartData = transactions.reduce((acc: any[], t) => {
+    const month = new Date(t.date).toLocaleDateString('es-AR', { month: 'short' });
+    const existing = acc.find(i => i.name === month);
+    if (existing) {
+      if (t.type === 'income') existing.ingresos += Number(t.amount);
+      else existing.gastos += Number(t.amount);
+    } else {
+      acc.push({ name: month, ingresos: t.type === 'income' ? Number(t.amount) : 0, gastos: t.type === 'expense' ? Number(t.amount) : 0 });
+    }
+    return acc;
+  }, []).reverse().slice(0, 6);
+
+  const handleSaveTransaction = async () => {
+    if (!formData.amount || !formData.description) return;
+    try {
+      await addTransaction({
+        ...formData,
+        type: transactionType,
+        amount: Number(formData.amount)
+      });
+      setIsTransactionModalOpen(false);
+      setFormData({ description: "", amount: "", date: new Date().toISOString().split('T')[0], category: "venta" });
+    } catch (error) {
+      console.error("Error al guardar transacción:", error);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -101,9 +130,20 @@ export default function Finances() {
               />
             </div>
           </div>
-          <div className="h-64 bg-white/5 rounded-lg border border-white/5 flex items-center justify-center">
-            <Activity className="w-8 h-8 text-gray-600 mb-2" />
-            <p className="text-gray-500 text-sm ml-2">Gráfico de ingresos vs gastos</p>
+          <div className="h-64 mt-4">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" />
+                <XAxis dataKey="name" stroke="#666" fontSize={10} />
+                <YAxis stroke="#666" fontSize={10} />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#0A0A0A', border: '1px solid #ffffff10', borderRadius: '12px' }}
+                  itemStyle={{ fontSize: '12px' }}
+                />
+                <Bar dataKey="ingresos" fill="#22c55e" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="gastos" fill="#ef4444" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </div>
 
@@ -146,28 +186,23 @@ export default function Finances() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-white/10 text-xs uppercase tracking-wider text-gray-500 bg-white/5">
-                <th className="p-4 font-medium">ID</th>
                 <th className="p-4 font-medium">Fecha</th>
                 <th className="p-4 font-medium">Descripción</th>
                 <th className="p-4 font-medium">Monto</th>
-                <th className="p-4 font-medium">Estado</th>
+                <th className="p-4 font-medium">Categoría</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
-              {recentTransactions.map((trx) => (
+              {transactions.slice(0, 10).map((trx) => (
                 <tr key={trx.id} className="hover:bg-white/5 transition-colors">
-                  <td className="p-4 text-sm text-gray-400">{trx.id}</td>
                   <td className="p-4 text-sm text-gray-300">{trx.date}</td>
                   <td className="p-4 text-sm text-white">{trx.description}</td>
                   <td className={`p-4 text-sm font-medium ${trx.type === 'income' ? 'text-green-400' : 'text-red-400'}`}>
-                    {trx.amount}
+                    {trx.type === 'income' ? '+' : '-'}{formatCurrency(trx.amount)}
                   </td>
                   <td className="p-4">
-                    <span className={`px-2 py-1 text-xs rounded-full border ${
-                      trx.status === 'Completado' ? 'bg-green-500/10 text-green-400 border-green-500/20' : 
-                      'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'
-                    }`}>
-                      {trx.status}
+                    <span className="px-2 py-1 text-xs rounded-full border bg-white/5 border-white/10 text-gray-400 uppercase tracking-tighter">
+                      {trx.category}
                     </span>
                   </td>
                 </tr>
@@ -205,19 +240,36 @@ export default function Finances() {
                 {transactionType === 'income' ? 'Registrar Ingreso' : 'Registrar Gasto'}
               </h3>
               
-              <div className="space-y-4 mb-8 pb-24">
+              <div className="space-y-4 mb-8">
                 <div>
                   <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Descripción</label>
-                  <input type="text" placeholder="Ej. Venta de vehículo, Pago de servicios..." className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-white/30 font-light text-sm" />
+                  <input 
+                    type="text" 
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    placeholder="Ej. Venta de vehículo, Pago de servicios..." 
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-white/30 font-light text-sm" 
+                  />
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Monto (USD)</label>
-                  <input type="number" placeholder="0.00" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-white/30 font-light text-sm" />
+                  <input 
+                    type="number" 
+                    value={formData.amount}
+                    onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                    placeholder="0.00" 
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-white/30 font-light text-sm" 
+                  />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Fecha</label>
-                    <input type="date" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-white/30 font-light text-sm [color-scheme:dark]" />
+                    <input 
+                      type="date" 
+                      value={formData.date}
+                      onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-white/30 font-light text-sm [color-scheme:dark]" 
+                    />
                   </div>
                   <div>
                     <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Categoría</label>
@@ -234,8 +286,8 @@ export default function Finances() {
                         { value: 'operativo', label: 'Gasto Operativo' },
                         { value: 'otro', label: 'Otro' }
                       ]}
-                      value={transactionType === 'income' ? 'venta' : 'operativo'}
-                      onChange={() => {}}
+                      value={formData.category}
+                      onChange={(val) => setFormData({ ...formData, category: val })}
                     />
                   </div>
                 </div>
@@ -249,7 +301,7 @@ export default function Finances() {
                   Cancelar
                 </button>
                 <button 
-                  onClick={() => setIsTransactionModalOpen(false)}
+                  onClick={handleSaveTransaction}
                   className="px-6 py-3 bg-white text-black rounded-full text-xs font-bold uppercase tracking-widest hover:bg-gray-200 transition-colors flex items-center gap-2"
                 >
                   <Save className="w-4 h-4" />

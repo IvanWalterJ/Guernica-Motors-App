@@ -22,6 +22,7 @@ interface AppState {
   leadsCount: number;
   appointmentsCount: number;
   activityLog: ActivityEntry[];
+  transactions: any[];
   isLoading: boolean;
 }
 
@@ -29,6 +30,8 @@ interface AppContextValue extends AppState {
   addVehicle: (data: VehicleFormData) => Promise<void>;
   updateVehicle: (id: string, data: Partial<VehicleFormData>) => Promise<void>;
   deleteVehicle: (id: string) => Promise<void>;
+  addTransaction: (data: any) => Promise<void>;
+  addLeadAndAppointment: (leadData: any, appointmentData: any) => Promise<void>;
   getVehicleById: (id: string) => Vehicle | undefined;
   incrementViews: (id: string) => Promise<void>;
   refreshData: () => Promise<void>;
@@ -38,6 +41,8 @@ interface AppContextValue extends AppState {
   setLeadsCount: (count: number) => void;
   soldCount: number;
   totalRevenue: number;
+  transactions: any[];
+  isLoading: boolean;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -49,6 +54,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     appointmentsCount: 0,
     activityLog: [],
     isLoading: true,
+    transactions: [],
   });
 
   // ─── Data Fetching ───────────────────────────────────────────────────────────
@@ -83,9 +89,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  const fetchTransactions = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('transactions')
+      .select('*')
+      .order('date', { ascending: false });
+    if (error) console.error('Error fetching transactions:', error);
+    return data || [];
+  }, []);
+
   const refreshData = useCallback(async () => {
     setState(prev => ({ ...prev, isLoading: true }));
-    const [vehicles, counts] = await Promise.all([fetchVehicles(), fetchCounts()]);
+    const [vehicles, counts, transactions] = await Promise.all([
+      fetchVehicles(), 
+      fetchCounts(),
+      fetchTransactions()
+    ]);
     
     // Load activity log from localStorage (local browser context only)
     const savedLog = localStorage.getItem(ACTIVITY_LOG_KEY);
@@ -96,10 +115,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       vehicles,
       leadsCount: counts.leads,
       appointmentsCount: counts.appointments,
+      transactions,
       activityLog,
       isLoading: false
     }));
-  }, [fetchVehicles, fetchCounts]);
+  }, [fetchVehicles, fetchCounts, fetchTransactions]);
 
   useEffect(() => {
     refreshData();
@@ -260,6 +280,31 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     addVehicle,
     updateVehicle,
     deleteVehicle,
+    addTransaction: async (data: any) => {
+      const { error } = await supabase.from('transactions').insert([data]);
+      if (error) throw error;
+      await refreshData();
+    },
+    addLeadAndAppointment: async (leadData: any, appointmentData: any) => {
+      // 1. Crear el Lead
+      const { data: newLead, error: leadError } = await supabase
+        .from('leads')
+        .insert([leadData])
+        .select()
+        .single();
+      if (leadError) throw leadError;
+
+      // 2. Crear la Cita vinculada al Lead y al Vehículo
+      const { error: appError } = await supabase
+        .from('appointments')
+        .insert([{
+          ...appointmentData,
+          lead_id: newLead.id
+        }]);
+      if (appError) throw appError;
+
+      await refreshData();
+    },
     getVehicleById,
     incrementViews,
     refreshData,
@@ -268,7 +313,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     availableVehicles,
     brandDistribution,
     soldCount,
+    transactions: state.transactions,
     totalRevenue,
+    isLoading: state.isLoading,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
