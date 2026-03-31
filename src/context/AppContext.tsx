@@ -291,7 +291,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       // 1. Crear el Lead
       const { data: newLead, error: leadError } = await supabase
         .from('leads')
-        .insert([leadData])
+        .insert([{
+          name: leadData.name,
+          phone: leadData.phone,
+          message: `Interesado en ${leadData.vehicle_interested}`,
+          status: 'nuevo'
+        }])
         .select()
         .single();
       if (leadError) throw leadError;
@@ -300,8 +305,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const { error: appError } = await supabase
         .from('appointments')
         .insert([{
-          ...appointmentData,
-          lead_id: newLead.id
+          user_name: leadData.name,
+          user_phone: leadData.phone,
+          date: appointmentData.appointment_date,
+          time: appointmentData.appointment_time,
+          vehicle_id: appointmentData.vehicle_id,
+          status: 'pendiente'
         }]);
       if (appError) throw appError;
 

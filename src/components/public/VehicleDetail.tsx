@@ -138,14 +138,14 @@ export default function VehicleDetail() {
   };
 
   const handleWhatsApp = () => {
-    const message = `Hola, estoy interesado en el ${vehicle.brand} ${vehicle.model} (${vehicle.year}). Me gustaría recibir más información.`;
-    window.open(`https://wa.me/5491112345678?text=${encodeURIComponent(message)}`, "_blank");
+    const message = `Hola, vengo de la web. Me interesa el ${vehicle.brand} ${vehicle.model}. ¿Podrían darme más información?`;
+    window.open(`https://wa.me/5491160455146?text=${encodeURIComponent(message)}`, "_blank");
   };
 
   const handleTradeInSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const message = `Hola, me interesa el ${vehicle.brand} ${vehicle.model} y quiero entregar mi ${tradeInData.brand} ${tradeInData.model} ${tradeInData.version} (Año ${tradeInData.year}, ${tradeInData.km}km) como parte de pago. ¿Me podrían pasar una cotización aproximada?`;
-    window.open(`https://wa.me/5491112345678?text=${encodeURIComponent(message)}`, "_blank");
+    window.open(`https://wa.me/5491160455146?text=${encodeURIComponent(message)}`, "_blank");
     setShowTradeInModal(false);
     setTradeInData({ brand: "", model: "", year: "", km: "", version: "" });
   };
@@ -160,32 +160,31 @@ export default function VehicleDetail() {
   return (
     <div className="bg-transparent min-h-screen pb-20 relative z-10">
 
-      {/* Hero Gallery Carousel */}
+      {/* Hero Gallery Carousel - Native Scroll Snap for best performance */}
       <div className="relative h-[60vh] min-h-[500px] w-full bg-[#0A0A0A]/40 backdrop-blur-sm overflow-hidden group">
-        <motion.div style={{ y }} className="absolute inset-0 w-full h-[140%] -top-[20%]">
-          <AnimatePresence mode="wait">
-            <motion.img
-              key={activePhoto}
-              initial={{ opacity: 0, scale: 1.05 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.3 }}
-              src={photos[activePhoto]}
-              alt={`${vehicle.brand} ${vehicle.model}`}
-              className="absolute inset-0 w-full h-full object-cover opacity-80 cursor-grab active:cursor-grabbing"
-              drag="x"
-              dragConstraints={{ left: 0, right: 0 }}
-              dragElastic={0.2}
-              onDragEnd={(_, info) => {
-                const threshold = 50;
-                if (info.offset.x < -threshold) nextPhoto();
-                else if (info.offset.x > threshold) prevPhoto();
-              }}
-              onError={(e) => { (e.target as HTMLImageElement).src = FALLBACK_IMAGE; }}
-            />
-          </AnimatePresence>
-        </motion.div>
-        <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-transparent to-transparent" />
+        <div 
+          className="flex w-full h-full overflow-x-auto snap-x snap-mandatory scrollbar-hide touch-pan-x"
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+          onScroll={(e) => {
+            const scrollLeft = (e.currentTarget as HTMLDivElement).scrollLeft;
+            const width = (e.currentTarget as HTMLDivElement).offsetWidth;
+            const index = Math.round(scrollLeft / width);
+            if (index !== activePhoto) setActivePhoto(index);
+          }}
+        >
+          {photos.map((img, index) => (
+            <div key={index} className="min-w-full h-full snap-center relative">
+              <img
+                src={img}
+                alt={`${vehicle.brand} ${vehicle.model}`}
+                className="w-full h-full object-cover"
+                onError={(e) => { (e.target as HTMLImageElement).src = FALLBACK_IMAGE; }}
+              />
+            </div>
+          ))}
+        </div>
+
+        <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-[#050505] via-transparent to-transparent" />
 
         <button
           onClick={prevPhoto}
@@ -204,7 +203,13 @@ export default function VehicleDetail() {
           {photos.map((_, idx) => (
             <button
               key={idx}
-              onClick={() => setActivePhoto(idx)}
+              onClick={() => {
+                const gallery = document.querySelector('.snap-x');
+                if (gallery) {
+                  gallery.scrollTo({ left: idx * gallery.clientWidth, behavior: 'smooth' });
+                }
+                setActivePhoto(idx);
+              }}
               className={`h-2 rounded-full transition-all duration-500 ${
                 activePhoto === idx ? "bg-white w-8 shadow-[0_0_10px_rgba(255,255,255,0.8)]" : "bg-white/30 w-2 hover:bg-white/60"
               }`}
@@ -409,7 +414,7 @@ export default function VehicleDetail() {
                             const date = nextDays[selectedDate!];
                             const dateString = date.toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" });
                             const message = `Hola, acabo de agendar una visita para el ${vehicle.brand} ${vehicle.model} el día ${dateString} a las ${selectedTime}hs. Me gustaría confirmar la recepción.`;
-                            window.open(`https://wa.me/5491112345678?text=${encodeURIComponent(message)}`, "_blank");
+                            window.open(`https://wa.me/5491160455146?text=${encodeURIComponent(message)}`, "_blank");
                           }}
                           className="w-full py-4 bg-[#25D366] text-white text-xs font-bold uppercase tracking-widest rounded-full hover:bg-[#128C7E] transition-colors flex items-center justify-center gap-2"
                         >
