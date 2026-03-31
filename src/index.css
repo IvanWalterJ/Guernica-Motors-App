@@ -1,0 +1,86 @@
+@import "tailwindcss";
+
+@theme {
+  --color-guernica-red-light: #ef4444;
+  --color-guernica-red-mid: #dc2626;
+  --color-guernica-red-dark: #dc2626;
+  --color-guernica-dark: #050505;
+}
+
+@layer utilities {
+  .text-gradient-guernica {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-[#ef4444] to-[#dc2626];
+  }
+  .bg-gradient-guernica {
+    @apply bg-gradient-to-r from-[#ef4444] to-[#dc2626];
+  }
+  .glow-guernica {
+    box-shadow: 0 0 15px rgba(220, 38, 38, 0.2), 0 0 30px rgba(220, 38, 38, 0.1);
+  }
+  .glow-guernica-hover:hover {
+    box-shadow: 0 0 20px rgba(220, 38, 38, 0.3), 0 0 40px rgba(220, 38, 38, 0.2);
+  }
+  .glass-card {
+    background: rgba(10, 10, 10, 0.4);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+  }
+  .animate-shine {
+    position: relative;
+    overflow: hidden;
+  }
+  .animate-shine::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -150%;
+    width: 50%;
+    height: 100%;
+    background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.15), transparent);
+    transform: skewX(-25deg);
+    transition: all 0.7s ease;
+    z-index: 10;
+    pointer-events: none;
+  }
+  .group:hover .animate-shine::after {
+    left: 200%;
+    transition: all 0.7s ease;
+  }
+  @keyframes pulse-glow {
+    0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.6); }
+    70% { box-shadow: 0 0 0 20px rgba(220, 38, 38, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+  }
+  .animate-pulse-glow {
+    animation: pulse-glow 2s infinite;
+  }
+}
+
+body {
+  background-color: #050505;
+  color: #ffffff;
+  font-family: 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: #ffffff;
+  color: #000000;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #050505;
+}
+::-webkit-scrollbar-thumb {
+  background: #222;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #444;
+}
