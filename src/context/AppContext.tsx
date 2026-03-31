@@ -255,8 +255,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   );
 
   const totalRevenue = useMemo(
-    () => state.vehicles.filter((v) => v.status === "sold").reduce((sum, v) => sum + v.price, 0),
-    [state.vehicles]
+    () => state.transactions
+      .filter((t: any) => t.type === "income")
+      .reduce((sum, t) => sum + Number(t.amount), 0),
+    [state.transactions]
   );
 
   const brandDistribution = useMemo((): BrandDistribution[] => {

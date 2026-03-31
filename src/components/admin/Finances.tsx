@@ -1,4 +1,8 @@
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
+import { useState } from "react";
+import { motion, AnimatePresence } from "motion/react";
+import { DollarSign, TrendingUp, TrendingDown, CreditCard, Download, X, Save } from "lucide-react";
+import CustomSelect from "../ui/CustomSelect";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useAppContext } from "../../context/AppContext";
 
 export default function Finances() {
