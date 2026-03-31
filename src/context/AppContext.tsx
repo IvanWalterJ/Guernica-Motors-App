@@ -34,6 +34,8 @@ interface AppContextValue extends AppState {
   refreshData: () => Promise<void>;
   availableVehicles: Vehicle[];
   brandDistribution: BrandDistribution[];
+  setAppointmentsCount: (count: number) => void;
+  setLeadsCount: (count: number) => void;
   soldCount: number;
   totalRevenue: number;
 }
@@ -261,6 +263,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     getVehicleById,
     incrementViews,
     refreshData,
+    setAppointmentsCount: (count: number) => setState(prev => ({ ...prev, appointmentsCount: count })),
+    setLeadsCount: (count: number) => setState(prev => ({ ...prev, leadsCount: count })),
     availableVehicles,
     brandDistribution,
     soldCount,
@@ -270,10 +274,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
 
-export function useAppContext(): AppContextValue {
-  const ctx = useContext(AppContext);
-  if (!ctx) {
-    throw new Error("useAppContext must be used inside <AppProvider>");
-  }
-  return ctx;
+export function useAppContext() {
+  const context = useContext(AppContext);
+  if (!context) throw new Error("useAppContext must be used within an AppProvider");
+  return context;
 }

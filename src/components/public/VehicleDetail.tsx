@@ -155,10 +155,18 @@ export default function VehicleDetail() {
               initial={{ opacity: 0, scale: 1.05 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.5 }}
+              transition={{ duration: 0.3 }}
               src={photos[activePhoto]}
               alt={`${vehicle.brand} ${vehicle.model}`}
-              className="absolute inset-0 w-full h-full object-cover opacity-80"
+              className="absolute inset-0 w-full h-full object-cover opacity-80 cursor-grab active:cursor-grabbing"
+              drag="x"
+              dragConstraints={{ left: 0, right: 0 }}
+              dragElastic={0.2}
+              onDragEnd={(_, info) => {
+                const threshold = 50;
+                if (info.offset.x < -threshold) nextPhoto();
+                else if (info.offset.x > threshold) prevPhoto();
+              }}
               onError={(e) => { (e.target as HTMLImageElement).src = FALLBACK_IMAGE; }}
             />
           </AnimatePresence>
@@ -334,29 +342,31 @@ export default function VehicleDetail() {
               </div>
             )}
 
-            {/* Similar Vehicles */}
-            {similarVehicles.length > 0 && (
-              <div className="pt-12 border-t border-white/10">
-                <h2 className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-8">Vehículos Similares</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  {similarVehicles.map((sim) => (
-                    <Link to={`/vehiculos/${sim.id}`} key={sim.id} className="group block">
-                      <div className="relative aspect-[16/9] rounded-xl overflow-hidden mb-4">
-                        <img
-                          src={sim.photos[0] ?? FALLBACK_IMAGE}
-                          alt={sim.model}
-                          className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500"
-                          onError={(e) => { (e.target as HTMLImageElement).src = FALLBACK_IMAGE; }}
-                        />
-                      </div>
-                      <p className="text-[10px] tracking-widest uppercase text-gray-500 mb-1">{sim.brand}</p>
-                      <h3 className="text-lg font-medium text-white mb-1 group-hover:text-[#dc2626] transition-colors">{sim.model}</h3>
-                      <p className="text-sm text-gray-400">USD {sim.price.toLocaleString()}</p>
-                    </Link>
-                  ))}
+            {/* Similar Vehicles - Visible ONLY on Desktop here if needed, but better moved below */}
+            <div className="hidden lg:block">
+              {similarVehicles.length > 0 && (
+                <div className="pt-12 border-t border-white/10">
+                  <h2 className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-8">Vehículos Similares</h2>
+                  <div className="grid grid-cols-2 gap-6">
+                    {similarVehicles.map((sim) => (
+                      <Link to={`/vehiculos/${sim.id}`} key={sim.id} className="group block">
+                        <div className="relative aspect-[16/9] rounded-xl overflow-hidden mb-4">
+                          <img
+                            src={sim.photos[0] ?? FALLBACK_IMAGE}
+                            alt={sim.model}
+                            className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500"
+                            onError={(e) => { (e.target as HTMLImageElement).src = FALLBACK_IMAGE; }}
+                          />
+                        </div>
+                        <p className="text-[10px] tracking-widest uppercase text-gray-500 mb-1">{sim.brand}</p>
+                        <h3 className="text-lg font-medium text-white mb-1 group-hover:text-[#dc2626] transition-colors">{sim.model}</h3>
+                        <p className="text-sm text-gray-400">USD {sim.price.toLocaleString()}</p>
+                      </Link>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
           </div>
 
@@ -492,6 +502,37 @@ export default function VehicleDetail() {
             </div>
           </div>
 
+        </div>
+
+        {/* Similar Vehicles Mobile (Moved to Bottom) */}
+        <div className="lg:hidden mt-16 pt-12 border-t border-white/10">
+          {similarVehicles.length > 0 && (
+            <>
+              <h2 className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-8 px-4 text-center">Vehículos Similares</h2>
+              <div className="grid grid-cols-1 gap-8 px-4">
+                {similarVehicles.map((sim) => (
+                  <Link to={`/vehiculos/${sim.id}`} key={sim.id} className="group block glass-card p-4 rounded-3xl border border-white/5 shadow-xl">
+                    <div className="relative aspect-[16/9] rounded-2xl overflow-hidden mb-4">
+                      <img
+                        src={sim.photos[0] ?? FALLBACK_IMAGE}
+                        alt={sim.model}
+                        className="w-full h-full object-cover opacity-80"
+                        onError={(e) => { (e.target as HTMLImageElement).src = FALLBACK_IMAGE; }}
+                      />
+                    </div>
+                    <div className="px-2 pb-2">
+                      <p className="text-[10px] tracking-widest uppercase text-gray-500 mb-1">{sim.brand}</p>
+                      <h3 className="text-xl font-light text-white mb-2">{sim.model}</h3>
+                      <div className="flex justify-between items-center">
+                        <p className="text-sm font-bold text-white">USD {sim.price.toLocaleString()}</p>
+                        <span className="text-[10px] text-gray-500 uppercase tracking-widest">Ver detalle</span>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       </div>
 
