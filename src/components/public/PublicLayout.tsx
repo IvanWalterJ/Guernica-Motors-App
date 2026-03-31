@@ -31,9 +31,6 @@ export default function PublicLayout() {
             </nav>
 
             <div className="hidden md:flex items-center space-x-6">
-              <Link to="/admin" className="text-xs tracking-widest uppercase font-medium text-gray-400 hover:text-white transition-colors">
-                Admin
-              </Link>
               <Link to="/contacto" className="bg-white text-black px-6 py-3 rounded-full text-xs tracking-widest uppercase font-bold hover:bg-gray-200 transition-all">
                 Contacto
               </Link>
@@ -59,7 +56,6 @@ export default function PublicLayout() {
             <Link to="/pedidos" className="block px-3 py-2 text-sm tracking-widest uppercase text-gray-300 hover:text-white">A Pedido</Link>
             <Link to="/financiacion" className="block px-3 py-2 text-sm tracking-widest uppercase text-gray-300 hover:text-white">Financiación</Link>
             <Link to="/contacto" className="block px-3 py-2 text-sm tracking-widest uppercase text-gray-300 hover:text-white">Contacto</Link>
-            <Link to="/admin" className="block px-3 py-2 text-sm tracking-widest uppercase text-white font-bold">Acceso Admin</Link>
           </motion.div>
         )}
       </header>

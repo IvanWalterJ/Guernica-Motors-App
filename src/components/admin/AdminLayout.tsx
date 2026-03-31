@@ -1,11 +1,11 @@
-import { Outlet, Link, useLocation } from "react-router-dom";
-import { 
-  LayoutDashboard, 
-  CarFront, 
-  Users, 
-  CalendarDays, 
-  Wallet, 
-  Settings, 
+import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
+import {
+  LayoutDashboard,
+  CarFront,
+  Users,
+  CalendarDays,
+  Wallet,
+  Settings,
   LogOut,
   Bell,
   Search,
@@ -14,12 +14,12 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
-  Check
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { cn } from "../../lib/utils";
 import AmbientBackground from "../ui/AmbientBackground";
+import { useAuth } from "../../context/AuthContext";
 
 const navigation = [
   { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
@@ -46,6 +46,13 @@ export default function AdminLayout() {
   const [showNotifications, setShowNotifications] = useState(false);
   const notificationsRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { logout } = useAuth();
+
+  function handleLogout() {
+    logout();
+    navigate("/admin/login", { replace: true });
+  }
 
   const [notifications, setNotifications] = useState<Notification[]>([
     {
@@ -215,7 +222,8 @@ export default function AdminLayout() {
           </div>
 
           <div className="p-6 border-t border-white/10">
-            <button 
+            <button
+              onClick={handleLogout}
               title={isCollapsed ? "Cerrar Sesión" : undefined}
               className={cn(
                 "flex items-center w-full px-4 py-3 text-xs tracking-widest uppercase font-medium text-gray-500 rounded-xl hover:bg-red-500/10 hover:text-red-400 transition-colors group",
@@ -243,23 +251,7 @@ export default function AdminLayout() {
               <Menu className="h-6 w-6" strokeWidth={1.5} />
             </button>
 
-            <div className="flex-1 flex justify-between items-center lg:ml-0 ml-4">
-              <div className="max-w-lg w-full lg:max-w-xs">
-                <label htmlFor="search" className="sr-only">Buscar</label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                    <Search className="h-4 w-4 text-gray-500" strokeWidth={1.5} />
-                  </div>
-                  <input
-                    id="search"
-                    name="search"
-                    className="block w-full pl-12 pr-4 py-3 border border-white/10 rounded-full leading-5 bg-white/5 backdrop-blur-md text-white placeholder-gray-500 focus:outline-none focus:border-white/30 sm:text-sm transition-all font-light"
-                    placeholder="Buscar..."
-                    type="search"
-                  />
-                </div>
-              </div>
-              
+            <div className="flex-1 flex justify-end items-center lg:ml-0 ml-4">
               <div className="ml-4 flex items-center md:ml-6 gap-6">
                 <div className="relative" ref={notificationsRef}>
                   <button 

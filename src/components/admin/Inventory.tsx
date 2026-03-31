@@ -1,130 +1,145 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Plus, Search, Filter, Eye, Edit, Trash2, X, Save } from "lucide-react";
+import { Plus, Search, Eye, Edit, Trash2, X, ImageOff, ChevronLeft, ChevronRight } from "lucide-react";
 import CustomSelect from "../ui/CustomSelect";
+import InventoryFormModal from "./InventoryFormModal";
+import { useAppContext } from "../../context/AppContext";
+import type { Vehicle, VehicleFormData } from "../../types/vehicle";
 
-const MOCK_INVENTORY = [
-  { id: 1, brand: "Porsche", model: "911 Carrera S", year: 2023, price: 185000, status: "available", daysInStock: 12, views: 145 },
-  { id: 2, brand: "Mercedes-Benz", model: "AMG GT", year: 2024, price: 210000, status: "reserved", daysInStock: 5, views: 89 },
-  { id: 3, brand: "Audi", model: "RS e-tron GT", year: 2023, price: 165000, status: "available", daysInStock: 2, views: 234 },
-  { id: 4, brand: "BMW", model: "M8 Competition", year: 2022, price: 175000, status: "sold", daysInStock: 45, views: 56 },
-  { id: 5, brand: "Land Rover", model: "Range Rover", year: 2024, price: 195000, status: "available", daysInStock: 95, views: 12 },
-];
+const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1503376760367-11ea8eb222c9?auto=format&fit=crop&q=80&w=400";
+const PAGE_SIZE = 8;
+
+const STATUS_LABEL: Record<string, string> = {
+  available: "Disponible",
+  reserved: "Reservado",
+  sold: "Vendido",
+};
+
+const STATUS_CLASS: Record<string, string> = {
+  available: "bg-white/5 text-white border-white/20",
+  reserved: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
+  sold: "bg-green-500/10 text-green-400 border-green-500/20",
+};
 
 export default function Inventory() {
-  const [inventory, setInventory] = useState(MOCK_INVENTORY);
-  const [selectedVehicle, setSelectedVehicle] = useState<typeof MOCK_INVENTORY[0] | null>(null);
-  const [isAddEditModalOpen, setIsAddEditModalOpen] = useState(false);
-  const [editingVehicle, setEditingVehicle] = useState<typeof MOCK_INVENTORY[0] | null>(null);
+  const { vehicles, addVehicle, updateVehicle, deleteVehicle } = useAppContext();
+
   const [filterStatus, setFilterStatus] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [page, setPage] = useState(1);
 
-  // Form State
-  const [formData, setFormData] = useState({
-    brand: "",
-    model: "",
-    year: new Date().getFullYear(),
-    price: 0,
-    status: "available"
-  });
+  const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
+  const [quickViewPhoto, setQuickViewPhoto] = useState(0);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
 
-  const handleEdit = (vehicle: typeof MOCK_INVENTORY[0]) => {
-    setEditingVehicle(vehicle);
-    setFormData({
-      brand: vehicle.brand,
-      model: vehicle.model,
-      year: vehicle.year,
-      price: vehicle.price,
-      status: vehicle.status
-    });
-    setIsAddEditModalOpen(true);
-  };
+  // ── Filtering & Pagination ──────────────────────────────────────────────────
 
-  const handleAddNew = () => {
-    setEditingVehicle(null);
-    setFormData({
-      brand: "",
-      model: "",
-      year: new Date().getFullYear(),
-      price: 0,
-      status: "available"
-    });
-    setIsAddEditModalOpen(true);
-  };
-
-  const handleSave = () => {
-    if (!formData.brand || !formData.model) return;
-
-    if (editingVehicle) {
-      setInventory(inventory.map(v => v.id === editingVehicle.id ? { ...v, ...formData } : v));
-    } else {
-      const newVehicle = {
-        id: Date.now(),
-        ...formData,
-        daysInStock: 0,
-        views: 0
-      };
-      setInventory([newVehicle, ...inventory]);
-    }
-    setIsAddEditModalOpen(false);
-  };
-
-  const handleDelete = (id: number) => {
-    if (confirm("¿Estás seguro de que deseas eliminar este vehículo?")) {
-      setInventory(inventory.filter(v => v.id !== id));
-    }
-  };
-
-  const filteredInventory = inventory.filter(item => {
-    const matchesSearch = item.brand.toLowerCase().includes(searchQuery.toLowerCase()) || item.model.toLowerCase().includes(searchQuery.toLowerCase());
+  const filtered = vehicles.filter((item) => {
+    const q = searchQuery.toLowerCase();
+    const matchesSearch =
+      item.brand.toLowerCase().includes(q) ||
+      item.model.toLowerCase().includes(q) ||
+      item.version.toLowerCase().includes(q);
     const matchesStatus = filterStatus === "all" || item.status === filterStatus;
     return matchesSearch && matchesStatus;
   });
 
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  const handleFilterChange = (val: string) => {
+    setFilterStatus(val);
+    setPage(1);
+  };
+
+  const handleSearchChange = (val: string) => {
+    setSearchQuery(val);
+    setPage(1);
+  };
+
+  // ── CRUD handlers ───────────────────────────────────────────────────────────
+
+  const handleOpenAdd = () => {
+    setEditingVehicle(null);
+    setIsFormOpen(true);
+  };
+
+  const handleOpenEdit = (vehicle: Vehicle) => {
+    setEditingVehicle(vehicle);
+    setIsFormOpen(true);
+    setSelectedVehicle(null);
+  };
+
+  const handleSave = (data: VehicleFormData) => {
+    if (editingVehicle) {
+      updateVehicle(editingVehicle.id, data);
+    } else {
+      addVehicle(data);
+    }
+    setIsFormOpen(false);
+  };
+
+  const handleDelete = (id: number) => {
+    if (confirm("¿Estás seguro de que deseas eliminar este vehículo?")) {
+      deleteVehicle(id);
+      if (selectedVehicle?.id === id) setSelectedVehicle(null);
+    }
+  };
+
+  const openQuickView = (vehicle: Vehicle) => {
+    setSelectedVehicle(vehicle);
+    setQuickViewPhoto(0);
+  };
+
   return (
     <div className="space-y-8">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
         <div>
           <h1 className="text-3xl font-light text-white tracking-tight">Inventario</h1>
           <p className="text-gray-500 mt-2 font-light">Gestioná la colección de vehículos.</p>
         </div>
-        <button onClick={handleAddNew} className="flex items-center gap-2 bg-white text-black px-6 py-3 rounded-full text-xs font-bold tracking-widest uppercase hover:bg-gray-200 transition-colors shadow-lg">
+        <button
+          onClick={handleOpenAdd}
+          className="flex items-center gap-2 bg-white text-black px-6 py-3 rounded-full text-xs font-bold tracking-widest uppercase hover:bg-gray-200 transition-colors shadow-lg"
+        >
           <Plus className="w-4 h-4" />
           Nuevo Vehículo
         </button>
       </div>
 
+      {/* Table card */}
       <div className="bg-[#0A0A0A] rounded-2xl border border-white/5 overflow-hidden">
+        {/* Filters */}
         <div className="p-6 border-b border-white/5 flex flex-col sm:flex-row gap-4 justify-between items-center bg-[#050505]">
           <div className="relative w-full sm:w-96">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 w-4 h-4" />
-            <input 
-              type="text" 
+            <input
+              type="text"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Buscar por marca, modelo o VIN..." 
+              onChange={(e) => handleSearchChange(e.target.value)}
+              placeholder="Buscar por marca, modelo o versión..."
               className="w-full pl-12 pr-4 py-3 bg-[#111111] border border-white/10 rounded-full text-sm text-white placeholder-gray-600 focus:outline-none focus:border-white/30 font-light transition-colors"
             />
           </div>
           <div className="flex items-center gap-4 w-full sm:w-auto">
             <div className="w-full sm:w-48">
-              <CustomSelect 
+              <CustomSelect
                 options={[
-                  { value: 'all', label: 'Todos los estados' },
-                  { value: 'available', label: 'Disponibles' },
-                  { value: 'reserved', label: 'Reservados' },
-                  { value: 'sold', label: 'Vendidos' }
+                  { value: "all", label: "Todos los estados" },
+                  { value: "available", label: "Disponibles" },
+                  { value: "reserved", label: "Reservados" },
+                  { value: "sold", label: "Vendidos" },
                 ]}
                 value={filterStatus}
-                onChange={setFilterStatus}
+                onChange={handleFilterChange}
               />
             </div>
-            <button className="flex items-center gap-2 px-6 py-3 bg-transparent border border-white/20 text-white rounded-full text-xs font-bold tracking-widest uppercase hover:bg-white/5 transition-colors w-full sm:w-auto justify-center">
-              Exportar
-            </button>
           </div>
         </div>
 
+        {/* Table */}
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm text-gray-400">
             <thead className="text-[10px] text-gray-500 uppercase tracking-widest bg-[#050505] border-b border-white/5">
@@ -138,75 +153,106 @@ export default function Inventory() {
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
-              {filteredInventory.map((item) => (
-                <tr key={item.id} className="hover:bg-white/[0.02] transition-colors">
-                  <td className="px-8 py-5">
-                    <div className="flex items-center gap-4">
-                      <div className="w-16 h-12 rounded-lg bg-[#111111] flex-shrink-0 overflow-hidden border border-white/5">
-                        <img src={`https://images.unsplash.com/photo-1503376760367-11ea8eb222c9?auto=format&fit=crop&q=80&w=100&sig=${item.id}`} alt="" className="w-full h-full object-cover opacity-80" />
-                      </div>
-                      <div>
-                        <p className="font-medium text-white">{item.brand} {item.model}</p>
-                        <p className="text-xs text-gray-500 font-light mt-1">Año {item.year}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-8 py-5 font-light text-white">
-                    USD {item.price.toLocaleString()}
-                  </td>
-                  <td className="px-8 py-5">
-                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase border ${
-                      item.status === 'available' ? 'bg-white/5 text-white border-white/20' :
-                      item.status === 'reserved' ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' :
-                      'bg-gray-800 text-gray-400 border-gray-700'
-                    }`}>
-                      {item.status === 'available' ? 'Disponible' : item.status === 'reserved' ? 'Reservado' : 'Vendido'}
-                    </span>
-                  </td>
-                  <td className="px-8 py-5">
-                    <span className={`font-light ${item.daysInStock > 90 ? 'text-red-400' : 'text-gray-400'}`}>
-                      {item.daysInStock} días
-                    </span>
-                  </td>
-                  <td className="px-8 py-5 text-gray-400 font-light">
-                    {item.views}
-                  </td>
-                  <td className="px-8 py-5 text-right">
-                    <div className="flex items-center justify-end gap-3">
-                      <button 
-                        onClick={() => setSelectedVehicle(item)}
-                        className="p-2 text-gray-500 hover:text-white transition-colors rounded-full hover:bg-white/10"
-                        title="Vista rápida"
-                      >
-                        <Eye className="w-4 h-4" strokeWidth={1.5} />
-                      </button>
-                      <button 
-                        onClick={() => handleEdit(item)}
-                        className="p-2 text-gray-500 hover:text-white transition-colors rounded-full hover:bg-white/10"
-                        title="Editar"
-                      >
-                        <Edit className="w-4 h-4" strokeWidth={1.5} />
-                      </button>
-                      <button 
-                        onClick={() => handleDelete(item.id)}
-                        className="p-2 text-gray-500 hover:text-red-400 transition-colors rounded-full hover:bg-red-500/10"
-                        title="Eliminar"
-                      >
-                        <Trash2 className="w-4 h-4" strokeWidth={1.5} />
-                      </button>
-                    </div>
+              {paginated.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-8 py-16 text-center text-gray-600 font-light">
+                    No se encontraron vehículos
                   </td>
                 </tr>
-              ))}
+              ) : (
+                paginated.map((item) => (
+                  <motion.tr
+                    key={item.id}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="hover:bg-white/[0.02] transition-colors"
+                  >
+                    <td className="px-8 py-5">
+                      <div className="flex items-center gap-4">
+                        <div className="w-16 h-12 rounded-lg bg-[#111111] flex-shrink-0 overflow-hidden border border-white/5">
+                          <img
+                            src={item.photos[0] ?? FALLBACK_IMAGE}
+                            alt=""
+                            className="w-full h-full object-cover opacity-80"
+                            onError={(e) => { (e.target as HTMLImageElement).src = FALLBACK_IMAGE; }}
+                          />
+                        </div>
+                        <div>
+                          <p className="font-medium text-white">{item.brand} {item.model}</p>
+                          <p className="text-xs text-gray-500 font-light mt-1">{item.version} · Año {item.year}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-8 py-5 font-light text-white">
+                      USD {item.price.toLocaleString()}
+                    </td>
+                    <td className="px-8 py-5">
+                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase border ${STATUS_CLASS[item.status]}`}>
+                        {STATUS_LABEL[item.status]}
+                      </span>
+                    </td>
+                    <td className="px-8 py-5">
+                      <span className={`font-light ${item.daysInStock > 90 ? "text-red-400" : "text-gray-400"}`}>
+                        {item.daysInStock} días
+                      </span>
+                    </td>
+                    <td className="px-8 py-5 text-gray-400 font-light">{item.views}</td>
+                    <td className="px-8 py-5 text-right">
+                      <div className="flex items-center justify-end gap-3">
+                        <button
+                          onClick={() => openQuickView(item)}
+                          className="p-2 text-gray-500 hover:text-white transition-colors rounded-full hover:bg-white/10"
+                          title="Vista rápida"
+                        >
+                          <Eye className="w-4 h-4" strokeWidth={1.5} />
+                        </button>
+                        <button
+                          onClick={() => handleOpenEdit(item)}
+                          className="p-2 text-gray-500 hover:text-white transition-colors rounded-full hover:bg-white/10"
+                          title="Editar"
+                        >
+                          <Edit className="w-4 h-4" strokeWidth={1.5} />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(item.id)}
+                          className="p-2 text-gray-500 hover:text-red-400 transition-colors rounded-full hover:bg-red-500/10"
+                          title="Eliminar"
+                        >
+                          <Trash2 className="w-4 h-4" strokeWidth={1.5} />
+                        </button>
+                      </div>
+                    </td>
+                  </motion.tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
-        
+
+        {/* Pagination */}
         <div className="p-6 border-t border-white/5 flex items-center justify-between text-xs text-gray-500 font-light bg-[#050505]">
-          <span>Mostrando 1 a 5 de 24 vehículos</span>
+          <span>
+            {filtered.length === 0
+              ? "Sin resultados"
+              : `Mostrando ${(page - 1) * PAGE_SIZE + 1}–${Math.min(page * PAGE_SIZE, filtered.length)} de ${filtered.length} vehículos`}
+          </span>
           <div className="flex gap-3">
-            <button className="px-4 py-2 border border-white/10 rounded-full hover:bg-white/5 disabled:opacity-50 transition-colors uppercase tracking-widest font-bold">Anterior</button>
-            <button className="px-4 py-2 border border-white/10 rounded-full hover:bg-white/5 transition-colors uppercase tracking-widest font-bold text-white">Siguiente</button>
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="px-4 py-2 border border-white/10 rounded-full hover:bg-white/5 disabled:opacity-40 transition-colors uppercase tracking-widest font-bold flex items-center gap-1"
+            >
+              <ChevronLeft className="w-3 h-3" />
+              Anterior
+            </button>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages}
+              className="px-4 py-2 border border-white/10 rounded-full hover:bg-white/5 disabled:opacity-40 transition-colors uppercase tracking-widest font-bold text-white flex items-center gap-1"
+            >
+              Siguiente
+              <ChevronRight className="w-3 h-3" />
+            </button>
           </div>
         </div>
       </div>
@@ -215,76 +261,120 @@ export default function Inventory() {
       <AnimatePresence>
         {selectedVehicle && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div 
-              initial={{ opacity: 0 }} 
-              animate={{ opacity: 1 }} 
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setSelectedVehicle(null)}
               className="absolute inset-0 bg-black/80 backdrop-blur-sm"
             />
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative w-full max-w-2xl bg-[#0A0A0A] border border-white/10 rounded-3xl overflow-hidden shadow-2xl z-10"
+              className="relative w-full max-w-2xl bg-[#0A0A0A] border border-white/10 rounded-3xl overflow-hidden shadow-2xl z-10 max-h-[90vh] flex flex-col"
             >
-              <button 
+              <button
                 onClick={() => setSelectedVehicle(null)}
                 className="absolute top-4 right-4 p-2 bg-black/50 hover:bg-black/80 text-white rounded-full backdrop-blur-md transition-colors z-20"
               >
                 <X className="w-5 h-5" />
               </button>
-              
-              <div className="aspect-video relative bg-[#050505]">
-                <img 
-                  src={`https://images.unsplash.com/photo-1503376760367-11ea8eb222c9?auto=format&fit=crop&q=80&w=800&sig=${selectedVehicle.id}`} 
-                  alt={`${selectedVehicle.brand} ${selectedVehicle.model}`} 
-                  className="w-full h-full object-cover opacity-90"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-transparent to-transparent" />
-                <div className="absolute bottom-6 left-6">
-                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase border mb-3 ${
-                    selectedVehicle.status === 'available' ? 'bg-white/5 text-white border-white/20' :
-                    selectedVehicle.status === 'reserved' ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' :
-                    'bg-gray-800 text-gray-400 border-gray-700'
-                  }`}>
-                    {selectedVehicle.status === 'available' ? 'Disponible' : selectedVehicle.status === 'reserved' ? 'Reservado' : 'Vendido'}
+
+              {/* Photo carousel */}
+              <div className="aspect-video relative bg-[#050505] flex-shrink-0">
+                {selectedVehicle.photos.length > 0 ? (
+                  <>
+                    <img
+                      src={selectedVehicle.photos[quickViewPhoto] ?? FALLBACK_IMAGE}
+                      alt={`${selectedVehicle.brand} ${selectedVehicle.model}`}
+                      className="w-full h-full object-cover opacity-90"
+                      onError={(e) => { (e.target as HTMLImageElement).src = FALLBACK_IMAGE; }}
+                    />
+                    {selectedVehicle.photos.length > 1 && (
+                      <>
+                        <button
+                          onClick={() => setQuickViewPhoto((p) => (p - 1 + selectedVehicle.photos.length) % selectedVehicle.photos.length)}
+                          className="absolute left-3 top-1/2 -translate-y-1/2 p-2 bg-black/50 backdrop-blur-sm text-white rounded-full hover:bg-black/80 transition-colors"
+                        >
+                          <ChevronLeft className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => setQuickViewPhoto((p) => (p + 1) % selectedVehicle.photos.length)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 p-2 bg-black/50 backdrop-blur-sm text-white rounded-full hover:bg-black/80 transition-colors"
+                        >
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+                        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
+                          {selectedVehicle.photos.map((_, i) => (
+                            <button
+                              key={i}
+                              onClick={() => setQuickViewPhoto(i)}
+                              className={`w-1.5 h-1.5 rounded-full transition-all ${i === quickViewPhoto ? "bg-white w-4" : "bg-white/40"}`}
+                            />
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </>
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <ImageOff className="w-12 h-12 text-gray-700" strokeWidth={1} />
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-transparent to-transparent pointer-events-none" />
+                <div className="absolute bottom-6 left-6 pointer-events-none">
+                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase border mb-3 ${STATUS_CLASS[selectedVehicle.status]}`}>
+                    {STATUS_LABEL[selectedVehicle.status]}
                   </span>
-                  <h2 className="text-3xl font-light text-white">{selectedVehicle.brand} <span className="font-bold italic">{selectedVehicle.model}</span></h2>
+                  <h2 className="text-3xl font-light text-white">
+                    {selectedVehicle.brand} <span className="font-bold italic">{selectedVehicle.model}</span>
+                  </h2>
+                  {selectedVehicle.version && (
+                    <p className="text-sm text-gray-400 font-light mt-1">{selectedVehicle.version}</p>
+                  )}
                 </div>
               </div>
-              
-              <div className="p-8 grid grid-cols-2 sm:grid-cols-4 gap-6">
+
+              {/* Stats grid */}
+              <div className="p-6 grid grid-cols-2 sm:grid-cols-4 gap-4 flex-shrink-0">
                 <div>
                   <p className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-1">Precio</p>
-                  <p className="text-xl font-light text-white">USD {selectedVehicle.price.toLocaleString()}</p>
+                  <p className="text-lg font-light text-white">USD {selectedVehicle.price.toLocaleString()}</p>
                 </div>
                 <div>
-                  <p className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-1">Año</p>
-                  <p className="text-xl font-light text-white">{selectedVehicle.year}</p>
+                  <p className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-1">Año / KM</p>
+                  <p className="text-lg font-light text-white">{selectedVehicle.year} · {selectedVehicle.km.toLocaleString()} km</p>
                 </div>
                 <div>
                   <p className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-1">Días en Stock</p>
-                  <p className="text-xl font-light text-white">{selectedVehicle.daysInStock}</p>
+                  <p className={`text-lg font-light ${selectedVehicle.daysInStock > 90 ? "text-red-400" : "text-white"}`}>{selectedVehicle.daysInStock}</p>
                 </div>
                 <div>
                   <p className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-1">Vistas</p>
-                  <p className="text-xl font-light text-white">{selectedVehicle.views}</p>
+                  <p className="text-lg font-light text-white">{selectedVehicle.views}</p>
                 </div>
               </div>
-              
-              <div className="p-6 border-t border-white/5 bg-[#050505] flex justify-end gap-4">
-                <button 
+
+              {/* Description */}
+              {selectedVehicle.description && (
+                <div className="px-6 pb-4 flex-shrink-0">
+                  <p className="text-xs text-gray-400 font-light leading-relaxed border-t border-white/5 pt-4">
+                    {selectedVehicle.description}
+                  </p>
+                </div>
+              )}
+
+              {/* Footer */}
+              <div className="p-6 border-t border-white/5 bg-[#050505] flex justify-end gap-4 flex-shrink-0">
+                <button
                   onClick={() => setSelectedVehicle(null)}
                   className="px-6 py-3 rounded-full text-xs font-bold uppercase tracking-widest text-gray-400 hover:text-white transition-colors"
                 >
                   Cerrar
                 </button>
-                <button 
-                  onClick={() => {
-                    setSelectedVehicle(null);
-                    handleEdit(selectedVehicle);
-                  }}
+                <button
+                  onClick={() => handleOpenEdit(selectedVehicle)}
                   className="px-6 py-3 bg-white text-black rounded-full text-xs font-bold uppercase tracking-widest hover:bg-gray-200 transition-colors"
                 >
                   Editar Vehículo
@@ -295,102 +385,14 @@ export default function Inventory() {
         )}
       </AnimatePresence>
 
-      {/* Add/Edit Modal */}
+      {/* Add / Edit Form Modal */}
       <AnimatePresence>
-        {isAddEditModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div 
-              initial={{ opacity: 0 }} 
-              animate={{ opacity: 1 }} 
-              exit={{ opacity: 0 }}
-              onClick={() => setIsAddEditModalOpen(false)}
-              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
-            />
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative w-full max-w-2xl bg-[#0A0A0A] border border-white/10 rounded-3xl shadow-2xl z-10 p-8"
-            >
-              <button 
-                onClick={() => setIsAddEditModalOpen(false)}
-                className="absolute top-6 right-6 p-2 text-gray-500 hover:text-white hover:bg-white/10 rounded-full transition-colors"
-              >
-                <X className="w-5 h-5" strokeWidth={1.5} />
-              </button>
-              
-              <h3 className="text-2xl font-light text-white mb-6">
-                {editingVehicle ? 'Editar Vehículo' : 'Nuevo Vehículo'}
-              </h3>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8 pb-24">
-                <div>
-                  <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Marca</label>
-                  <input 
-                    type="text" 
-                    value={formData.brand}
-                    onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-white/30 font-light text-sm" 
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Modelo</label>
-                  <input 
-                    type="text" 
-                    value={formData.model}
-                    onChange={(e) => setFormData({ ...formData, model: e.target.value })}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-white/30 font-light text-sm" 
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Año</label>
-                  <input 
-                    type="number" 
-                    value={formData.year}
-                    onChange={(e) => setFormData({ ...formData, year: parseInt(e.target.value) || new Date().getFullYear() })}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-white/30 font-light text-sm" 
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Precio (USD)</label>
-                  <input 
-                    type="number" 
-                    value={formData.price}
-                    onChange={(e) => setFormData({ ...formData, price: parseInt(e.target.value) || 0 })}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-white/30 font-light text-sm" 
-                  />
-                </div>
-                <div className="sm:col-span-2">
-                  <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Estado</label>
-                  <CustomSelect 
-                    options={[
-                      { value: 'available', label: 'Disponible' },
-                      { value: 'reserved', label: 'Reservado' },
-                      { value: 'sold', label: 'Vendido' }
-                    ]}
-                    value={formData.status}
-                    onChange={(val) => setFormData({ ...formData, status: val })}
-                  />
-                </div>
-              </div>
-              
-              <div className="flex justify-end gap-4">
-                <button 
-                  onClick={() => setIsAddEditModalOpen(false)}
-                  className="px-6 py-3 rounded-full text-xs font-bold uppercase tracking-widest text-gray-400 hover:text-white transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button 
-                  onClick={handleSave}
-                  className="px-6 py-3 bg-white text-black rounded-full text-xs font-bold uppercase tracking-widest hover:bg-gray-200 transition-colors flex items-center gap-2"
-                >
-                  <Save className="w-4 h-4" />
-                  Guardar
-                </button>
-              </div>
-            </motion.div>
-          </div>
+        {isFormOpen && (
+          <InventoryFormModal
+            vehicle={editingVehicle}
+            onSave={handleSave}
+            onClose={() => setIsFormOpen(false)}
+          />
         )}
       </AnimatePresence>
     </div>
