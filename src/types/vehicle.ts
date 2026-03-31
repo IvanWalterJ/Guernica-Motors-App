@@ -3,7 +3,7 @@ export type VehicleCondition = '0km' | 'Usado';
 export type FuelType = 'Gasolina' | 'Diésel' | 'Eléctrico' | 'Híbrido' | 'GNC';
 
 export interface Vehicle {
-  id: number;
+  id: string;
   brand: string;
   model: string;
   version: string;
