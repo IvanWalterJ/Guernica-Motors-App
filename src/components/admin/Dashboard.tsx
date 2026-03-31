@@ -326,8 +326,8 @@ export default function Dashboard() {
               <AreaChart data={salesChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorIngresos" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#dc2626" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#dc2626" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="#22c55e" stopOpacity={0}/>
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
@@ -335,29 +335,29 @@ export default function Dashboard() {
                 <YAxis yAxisId="left" axisLine={false} tickLine={false} tick={{ fill: "#6b7280", fontSize: 11 }} />
                 <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tick={{ fill: "#6b7280", fontSize: 11 }} />
                 <Tooltip
-                  cursor={{ stroke: "rgba(220,38,38,0.2)", strokeWidth: 1 }}
+                  cursor={{ stroke: "rgba(34,197,94,0.2)", strokeWidth: 1 }}
                   contentStyle={{
                     backgroundColor: "rgba(10,10,10,0.95)",
                     backdropFilter: "blur(10px)",
                     borderRadius: "12px",
-                    border: "1px solid rgba(220,38,38,0.2)",
+                    border: "1px solid rgba(34,197,94,0.2)",
                     color: "#fff",
-                    boxShadow: "0 0 20px rgba(220,38,38,0.1)"
+                    boxShadow: "0 0 20px rgba(34,197,94,0.1)"
                   }}
                   formatter={(value: number, name: string) =>
                     name === "ingresos" ? [formatCurrency(value), "Ingresos"] : [value, "Ventas"]
                   }
                 />
-                <Bar yAxisId="left" dataKey="ventas" fill="#ef4444" radius={[4, 4, 0, 0]} maxBarSize={30} opacity={0.6} />
+                <Bar yAxisId="left" dataKey="ventas" fill="#22c55e" radius={[4, 4, 0, 0]} maxBarSize={30} opacity={0.6} />
                 <Area
                   yAxisId="right"
                   type="monotone"
                   dataKey="ingresos"
-                  stroke="#ef4444"
+                  stroke="#22c55e"
                   strokeWidth={3}
                   fillOpacity={1}
                   fill="url(#colorIngresos)"
-                  activeDot={{ r: 6, fill: "#dc2626", strokeWidth: 0, stroke: "none" }}
+                  activeDot={{ r: 6, fill: "#16a34a", strokeWidth: 0, stroke: "none" }}
                 />
               </AreaChart>
             </ResponsiveContainer>
@@ -383,7 +383,7 @@ export default function Dashboard() {
                       initial={{ width: 0 }}
                       animate={{ width }}
                       transition={{ duration: 1, delay: index * 0.1 }}
-                      className="h-full bg-gradient-to-r from-red-600 to-red-400 rounded-full"
+                      className="h-full bg-gradient-to-r from-green-600 to-green-400 rounded-full"
                     />
                   </div>
                 </div>
