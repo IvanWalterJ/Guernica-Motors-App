@@ -112,10 +112,11 @@ export default function Home() {
                   className="bg-[#050505] rounded-2xl overflow-hidden border border-white/5 group cursor-pointer shadow-lg transition-all duration-500 h-full"
                 >
                   <div className="block relative aspect-[4/5] overflow-hidden">
-                    <img 
-                      src={car.images[0]} 
-                      alt={car.model} 
+                    <img
+                      src={car.photos[0] ?? "https://images.unsplash.com/photo-1503376760367-11ea8eb222c9?auto=format&fit=crop&q=80&w=800"}
+                      alt={car.model}
                       className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700"
+                      onError={(e) => { (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1503376760367-11ea8eb222c9?auto=format&fit=crop&q=80&w=800"; }}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-transparent to-transparent opacity-90" />
                     
