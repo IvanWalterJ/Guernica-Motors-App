@@ -30,8 +30,8 @@ export default function Contact() {
       await addLeadAndAppointment(
         {
           name: clientName,
-          message: `Visita agendada desde página de contacto. Tel: ${clientPhone}. Fecha: ${date.toLocaleDateString("es-AR")} ${selectedTime}hs.`,
-          type: 'contact',
+          phone: clientPhone,
+          message: `Visita desde página de contacto. Fecha: ${date.toLocaleDateString("es-AR")} ${selectedTime}hs.`,
         },
         {
           user_name: clientName,

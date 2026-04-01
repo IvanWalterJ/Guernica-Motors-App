@@ -84,15 +84,15 @@ export default function VehicleDetail() {
         name: clientName,
         phone: clientPhone,
         message: `Solicitó visita para ${vehicle.brand} ${vehicle.model} (${vehicle.year})`,
-        vehicle_interested: `${vehicle.brand} ${vehicle.model}`
+        vehicle_id: vehicle.id,
       };
-      
+
       const appointmentData = {
         user_name: clientName,
         user_phone: clientPhone,
         date: date.toISOString().split('T')[0],
         time: selectedTime,
-        vehicle_id: vehicle.id
+        vehicle_id: vehicle.id,
       };
 
       await addLeadAndAppointment(leadData, appointmentData);
