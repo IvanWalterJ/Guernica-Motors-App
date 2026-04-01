@@ -167,20 +167,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     // Only send columns confirmed to exist in the leads table
     const { error: leadError } = await supabase
       .from('leads')
-      .insert([{ name: lead.name, message: lead.message, status: 'new', type: lead.type ?? 'appointment' }]);
+      .insert([{ name: lead.name, message: lead.message, status: 'new' }]);
 
     if (leadError) throw leadError;
 
     // Only send columns confirmed to exist in the appointments table
+    // vehicle_id is omitted if null to avoid NOT NULL constraint errors
+    const aptPayload: Record<string, unknown> = {
+      user_name: appointment.user_name,
+      user_phone: appointment.user_phone,
+      date: appointment.date,
+      time: appointment.time,
+    };
+    if (appointment.vehicle_id) aptPayload.vehicle_id = appointment.vehicle_id;
+
     const { error: appError } = await supabase
       .from('appointments')
-      .insert([{
-        user_name: appointment.user_name,
-        user_phone: appointment.user_phone,
-        date: appointment.date,
-        time: appointment.time,
-        vehicle_id: appointment.vehicle_id,
-      }]);
+      .insert([aptPayload]);
 
     if (appError) throw appError;
 
