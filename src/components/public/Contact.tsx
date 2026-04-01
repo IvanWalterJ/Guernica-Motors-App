@@ -1,36 +1,62 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { MapPin, Phone, Mail, Clock, CheckCircle, Calendar, MessageCircle } from "lucide-react";
+import { useAppContext } from "../../context/AppContext";
+
+const WHATSAPP_NUMBER = "5491160455146";
 
 export default function Contact() {
+  const { addLeadAndAppointment } = useAppContext();
   const [selectedDate, setSelectedDate] = useState<number | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
+  const [clientName, setClientName] = useState("");
+  const [clientPhone, setClientPhone] = useState("");
   const [isScheduled, setIsScheduled] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSchedule = () => {
-    if (selectedDate !== null && selectedTime) {
+  const nextDays = Array.from({ length: 7 }).map((_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() + i + 1);
+    return d;
+  });
+
+  const timeSlots = ["10:00", "11:30", "14:00", "15:30", "17:00"];
+
+  const handleSchedule = async () => {
+    if (selectedDate === null || !selectedTime || !clientName || !clientPhone) return;
+    setIsSubmitting(true);
+    try {
+      const date = nextDays[selectedDate];
+      await addLeadAndAppointment(
+        {
+          name: clientName,
+          message: `Visita agendada desde página de contacto. Tel: ${clientPhone}. Fecha: ${date.toLocaleDateString("es-AR")} ${selectedTime}hs.`,
+          type: 'contact',
+        },
+        {
+          user_name: clientName,
+          user_phone: clientPhone,
+          date: date.toISOString().split('T')[0],
+          time: selectedTime,
+          vehicle_id: null,
+        }
+      );
       setIsScheduled(true);
-      setTimeout(() => {
-        setIsScheduled(false);
-        setSelectedDate(null);
-        setSelectedTime(null);
-      }, 5000);
+      setClientName("");
+      setClientPhone("");
+      setSelectedDate(null);
+      setSelectedTime(null);
+    } catch {
+      alert("Hubo un error al procesar tu solicitud. Por favor intentá de nuevo.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleWhatsApp = () => {
     const message = `Hola, me gustaría recibir más información sobre sus vehículos.`;
-    window.open(`https://wa.me/5491112345678?text=${encodeURIComponent(message)}`, '_blank');
+    window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`, '_blank');
   };
-
-  // Generate next 7 days for the calendar
-  const nextDays = Array.from({ length: 7 }).map((_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() + i + 1); // Start from tomorrow
-    return d;
-  });
-
-  const timeSlots = ["10:00", "11:30", "14:00", "15:30", "17:00"];
 
   return (
     <div className="bg-transparent min-h-screen py-12 relative z-10">
@@ -69,7 +95,7 @@ export default function Contact() {
                 </div>
                 <div>
                   <h4 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Teléfono / WhatsApp</h4>
-                  <p className="text-lg text-white font-light">+54 11 1234-5678</p>
+                  <p className="text-lg text-white font-light">+54 9 11 6045-5146</p>
                 </div>
               </div>
 
@@ -164,13 +190,30 @@ export default function Contact() {
                   </div>
                 </div>
 
-                <button 
+                <div className="space-y-3 mb-6">
+                  <input
+                    type="text"
+                    placeholder="Nombre Completo"
+                    value={clientName}
+                    onChange={(e) => setClientName(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white placeholder-gray-600 text-sm focus:outline-none focus:border-white/30 transition-colors font-light"
+                  />
+                  <input
+                    type="tel"
+                    placeholder="WhatsApp (ej: 11 6045-5146)"
+                    value={clientPhone}
+                    onChange={(e) => setClientPhone(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white placeholder-gray-600 text-sm focus:outline-none focus:border-white/30 transition-colors font-light"
+                  />
+                </div>
+
+                <button
                   onClick={handleSchedule}
-                  disabled={selectedDate === null || !selectedTime}
+                  disabled={isSubmitting || selectedDate === null || !selectedTime || !clientName || !clientPhone}
                   className="w-full py-4 bg-white text-black text-xs font-bold uppercase tracking-widest rounded-full hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   <Calendar className="w-4 h-4" />
-                  Confirmar Visita
+                  {isSubmitting ? "Procesando..." : "Confirmar Visita"}
                 </button>
               </div>
 

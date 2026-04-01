@@ -164,19 +164,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const addLeadAndAppointment = async (lead: any, appointment: any) => {
-    // Generate UUID client-side to avoid depending on .select() after insert
-    // (which can fail silently when Supabase RLS blocks the returning SELECT)
-    const leadId = crypto.randomUUID();
-
+    // Only send columns confirmed to exist in the leads table
     const { error: leadError } = await supabase
       .from('leads')
-      .insert([{ ...lead, id: leadId, status: 'new' }]);
+      .insert([{ name: lead.name, message: lead.message, status: 'new', type: lead.type ?? 'appointment' }]);
 
     if (leadError) throw leadError;
 
+    // Only send columns confirmed to exist in the appointments table
     const { error: appError } = await supabase
       .from('appointments')
-      .insert([{ ...appointment, lead_id: leadId }]);
+      .insert([{
+        user_name: appointment.user_name,
+        user_phone: appointment.user_phone,
+        date: appointment.date,
+        time: appointment.time,
+        vehicle_id: appointment.vehicle_id,
+      }]);
 
     if (appError) throw appError;
 
