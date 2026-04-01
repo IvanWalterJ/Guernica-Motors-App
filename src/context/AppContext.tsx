@@ -1,332 +1,223 @@
-import { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
-import type { Vehicle, VehicleFormData, BrandDistribution } from "../types/vehicle";
-import { supabase } from "../lib/supabase";
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import { supabase } from '../lib/supabase';
 
-const ACTIVITY_LOG_KEY = "guernica_motors_activity";
-const MS_PER_DAY = 1000 * 60 * 60 * 24;
+interface Vehicle {
+  id: string;
+  brand: string;
+  model: string;
+  year: number;
+  price: number;
+  km: number;
+  fuel: string;
+  transmission: string;
+  engine: string;
+  version: string;
+  description: string;
+  images: string[];
+  status: 'available' | 'sold' | 'reserved';
+  featured: boolean;
+  views: number;
+  created_at: string;
+}
 
-export type ActivityIcon = "car" | "dollar" | "trash" | "edit" | "users";
+interface Transaction {
+  id: string;
+  type: 'income' | 'expense';
+  amount: number;
+  description: string;
+  category: string;
+  date: string;
+}
 
-export interface ActivityEntry {
+interface ActivityEntry {
   id: string;
   action: string;
-  detail: string;
-  time: number;
-  icon: ActivityIcon;
+  details: string;
+  timestamp: string;
+  type: 'inventory' | 'lead' | 'sale' | 'system';
 }
 
-const MAX_ACTIVITY = 30;
-
-interface AppState {
+interface AppContextValue {
   vehicles: Vehicle[];
+  leads: any[];
+  appointments: any[];
   leadsCount: number;
   appointmentsCount: number;
-  activityLog: ActivityEntry[];
-  transactions: any[];
+  transactions: Transaction[];
   isLoading: boolean;
-}
-
-interface AppContextValue extends AppState {
-  addVehicle: (data: VehicleFormData) => Promise<void>;
-  updateVehicle: (id: string, data: Partial<VehicleFormData>) => Promise<void>;
+  refreshData: (silent?: boolean) => Promise<void>;
+  addVehicle: (vehicle: Omit<Vehicle, 'id'>) => Promise<void>;
+  updateVehicle: (id: string, vehicle: Partial<Vehicle>) => Promise<void>;
   deleteVehicle: (id: string) => Promise<void>;
   addTransaction: (data: any) => Promise<void>;
-  addLeadAndAppointment: (leadData: any, appointmentData: any) => Promise<void>;
+  addLeadAndAppointment: (lead: any, appointment: any) => Promise<void>;
+  updateLeadStatus: (id: string, status: string) => Promise<void>;
   getVehicleById: (id: string) => Vehicle | undefined;
   incrementViews: (id: string) => Promise<void>;
-  refreshData: () => Promise<void>;
   availableVehicles: Vehicle[];
-  brandDistribution: BrandDistribution[];
-  setAppointmentsCount: (count: number) => void;
-  setLeadsCount: (count: number) => void;
+  brandDistribution: { name: string; value: number }[];
   soldCount: number;
   totalRevenue: number;
-  transactions: any[];
-  isLoading: boolean;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState<AppState>({
+  const [state, setState] = useState<{
+    vehicles: Vehicle[];
+    leads: any[];
+    appointments: any[];
+    transactions: Transaction[];
+    isLoading: boolean;
+  }>({
     vehicles: [],
-    leadsCount: 0,
-    appointmentsCount: 0,
-    activityLog: [],
-    isLoading: true,
+    leads: [],
+    appointments: [],
     transactions: [],
+    isLoading: true
   });
 
-  // ─── Data Fetching ───────────────────────────────────────────────────────────
-
   const fetchVehicles = useCallback(async () => {
-    const { data, error } = await supabase
-      .from('vehicles')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Error fetching vehicles:', error);
-      return [];
-    }
-
+    const { data } = await supabase.from('vehicles').select('*').order('created_at', { ascending: false });
     return (data || []).map(v => ({
       ...v,
-      createdAt: new Date(v.created_at).getTime(),
-      daysInStock: Math.floor((Date.now() - new Date(v.created_at).getTime()) / MS_PER_DAY),
+      images: Array.isArray(v.images) ? v.images : JSON.parse(v.images || '[]')
     })) as Vehicle[];
   }, []);
 
-  const fetchCounts = useCallback(async () => {
-    const [leads, appointments] = await Promise.all([
-      supabase.from('leads').select('*', { count: 'exact', head: true }),
-      supabase.from('appointments').select('*', { count: 'exact', head: true })
-    ]);
-
-    return {
-      leads: leads.count || 0,
-      appointments: appointments.count || 0
-    };
-  }, []);
-
-  const fetchTransactions = useCallback(async () => {
-    const { data, error } = await supabase
-      .from('transactions')
-      .select('*')
-      .order('date', { ascending: false });
-    if (error) console.error('Error fetching transactions:', error);
+  const fetchLeads = useCallback(async () => {
+    const { data } = await supabase.from('leads').select('*').order('created_at', { ascending: false });
     return data || [];
   }, []);
 
-  const refreshData = useCallback(async () => {
-    setState(prev => ({ ...prev, isLoading: true }));
-    const [vehicles, counts, transactions] = await Promise.all([
-      fetchVehicles(), 
-      fetchCounts(),
-      fetchTransactions()
-    ]);
-    
-    // Load activity log from localStorage (local browser context only)
-    const savedLog = localStorage.getItem(ACTIVITY_LOG_KEY);
-    const activityLog = savedLog ? JSON.parse(savedLog) : [];
+  const fetchAppointments = useCallback(async () => {
+    const { data } = await supabase.from('appointments').select('*').order('date', { ascending: true });
+    return data || [];
+  }, []);
 
-    setState(prev => ({
-      ...prev,
-      vehicles,
-      leadsCount: counts.leads,
-      appointmentsCount: counts.appointments,
-      transactions,
-      activityLog,
-      isLoading: false
-    }));
-  }, [fetchVehicles, fetchCounts, fetchTransactions]);
+  const fetchTransactions = useCallback(async () => {
+    const { data } = await supabase.from('transactions').select('*').order('date', { ascending: false });
+    return data || [];
+  }, []);
+
+  const refreshData = useCallback(async (silent = false) => {
+    if (!silent) setState(prev => ({ ...prev, isLoading: true }));
+    try {
+      const [vehicles, leads, appointments, transactions] = await Promise.all([
+        fetchVehicles(),
+        fetchLeads(),
+        fetchAppointments(),
+        fetchTransactions()
+      ]);
+      
+      setState({
+        vehicles,
+        leads,
+        appointments,
+        transactions,
+        isLoading: false
+      });
+    } catch (error) {
+      console.error("Error refreshing data:", error);
+      setState(prev => ({ ...prev, isLoading: false }));
+    }
+  }, [fetchVehicles, fetchLeads, fetchAppointments, fetchTransactions]);
 
   useEffect(() => {
     refreshData();
   }, [refreshData]);
 
-  // Persist activity log locally
-  useEffect(() => {
-    localStorage.setItem(ACTIVITY_LOG_KEY, JSON.stringify(state.activityLog));
-  }, [state.activityLog]);
+  const addVehicle = async (vehicle: Omit<Vehicle, 'id'>) => {
+    const { error } = await supabase.from('vehicles').insert([vehicle]);
+    if (error) throw error;
+    await refreshData(true);
+  };
 
-  // ─── Actions ─────────────────────────────────────────────────────────────────
+  const updateVehicle = async (id: string, vehicle: Partial<Vehicle>) => {
+    const { error } = await supabase.from('vehicles').update(vehicle).eq('id', id);
+    if (error) throw error;
+    await refreshData(true);
+  };
 
-  const addActivity = useCallback((action: string, detail: string, icon: ActivityIcon) => {
-    const entry: ActivityEntry = {
-      id: `${Date.now()}-activity`,
-      action,
-      detail,
-      time: Date.now(),
-      icon,
-    };
-    setState(prev => ({
-      ...prev,
-      activityLog: [entry, ...prev.activityLog].slice(0, MAX_ACTIVITY)
-    }));
-  }, []);
+  const deleteVehicle = async (id: string) => {
+    const { error } = await supabase.from('vehicles').delete().eq('id', id);
+    if (error) throw error;
+    await refreshData(true);
+  };
 
-  const addVehicle = useCallback(async (data: VehicleFormData) => {
-    const { data: newVehicle, error } = await supabase
-      .from('vehicles')
-      .insert([data])
+  const addTransaction = async (data: any) => {
+    const { error } = await supabase.from('transactions').insert([data]);
+    if (error) throw error;
+    await refreshData(true);
+  };
+
+  const addLeadAndAppointment = async (lead: any, appointment: any) => {
+    // Al agendar, el lead siempre entra como 'new' (Nuevo)
+    const { data: leadData, error: leadError } = await supabase
+      .from('leads')
+      .insert([{ ...lead, status: 'new' }])
       .select()
       .single();
 
-    if (error) {
-      console.error('Error adding vehicle:', error);
-      throw error;
-    }
+    if (leadError) throw leadError;
 
-    if (newVehicle) {
-      const vehicle: Vehicle = {
-        ...newVehicle,
-        createdAt: new Date(newVehicle.created_at).getTime(),
-        daysInStock: 0
-      };
+    const { error: appError } = await supabase
+      .from('appointments')
+      .insert([{ ...appointment, lead_id: leadData.id }]);
 
-      addActivity("Nuevo vehículo", `${data.brand} ${data.model} agregado al inventario`, "car");
-      setState(prev => ({
-        ...prev,
-        vehicles: [vehicle, ...prev.vehicles]
-      }));
-    }
-  }, [addActivity]);
+    if (appError) throw appError;
 
-  const updateVehicle = useCallback(async (id: string, data: Partial<VehicleFormData>) => {
+    await refreshData(true);
+  };
+
+  const updateLeadStatus = async (id: string, status: string) => {
     const { error } = await supabase
-      .from('vehicles')
-      .update(data)
+      .from('leads')
+      .update({ status })
       .eq('id', id);
 
-    if (error) {
-      console.error('Error updating vehicle:', error);
-      throw error;
-    }
+    if (error) throw error;
+    await refreshData(true);
+  };
 
-    setState(prev => {
-      const existing = prev.vehicles.find(v => v.id === id);
-      if (existing && data.status && data.status !== existing.status) {
-        if (data.status === "sold") {
-          addActivity("Venta concretada", `${existing.brand} ${existing.model} marcado como vendido`, "dollar");
-        } else {
-          addActivity("Estado actualizado", `${existing.brand} ${existing.model} actualizado`, "edit");
-        }
-      }
-      return {
-        ...prev,
-        vehicles: prev.vehicles.map(v => v.id === id ? { ...v, ...data } : v)
-      };
+  const getVehicleById = (id: string) => state.vehicles.find(v => v.id === id);
+
+  const incrementViews = async (id: string) => {
+    const vehicle = getVehicleById(id);
+    if (vehicle) {
+      await supabase.from('vehicles').update({ views: (vehicle.views || 0) + 1 }).eq('id', id);
+    }
+  };
+
+  const availableVehicles = useMemo(() => state.vehicles.filter(v => v.status === 'available'), [state.vehicles]);
+  const soldCount = useMemo(() => state.vehicles.filter(v => v.status === 'sold').length, [state.vehicles]);
+  const totalRevenue = useMemo(() => state.transactions.filter(t => t.type === 'income').reduce((acc, curr) => acc + curr.amount, 0), [state.transactions]);
+  
+  const brandDistribution = useMemo(() => {
+    const dist: Record<string, number> = {};
+    state.vehicles.forEach(v => {
+      dist[v.brand] = (dist[v.brand] || 0) + 1;
     });
-  }, [addActivity]);
-
-  const deleteVehicle = useCallback(async (id: string) => {
-    const vehicleToDelete = state.vehicles.find(v => v.id === id);
-    const { error } = await supabase
-      .from('vehicles')
-      .delete()
-      .eq('id', id);
-
-    if (error) {
-      console.error('Error deleting vehicle:', error);
-      throw error;
-    }
-
-    if (vehicleToDelete) {
-      addActivity("Vehículo eliminado", `${vehicleToDelete.brand} ${vehicleToDelete.model} removido`, "trash");
-      setState(prev => ({
-        ...prev,
-        vehicles: prev.vehicles.filter(v => v.id !== id)
-      }));
-    }
-  }, [state.vehicles, addActivity]);
-
-  const getVehicleById = useCallback((id: string) => {
-    return state.vehicles.find(v => v.id === id);
+    return Object.entries(dist).map(([name, value]) => ({ name, value }));
   }, [state.vehicles]);
 
-  const incrementViews = useCallback(async (id: string) => {
-    const vehicle = state.vehicles.find(v => v.id === id);
-    if (!vehicle) return;
-
-    const { error } = await supabase
-      .from('vehicles')
-      .update({ views: (vehicle.views || 0) + 1 })
-      .eq('id', id);
-
-    if (!error) {
-      setState(prev => ({
-        ...prev,
-        vehicles: prev.vehicles.map(v => v.id === id ? { ...v, views: (v.views || 0) + 1 } : v)
-      }));
-    }
-  }, [state.vehicles]);
-
-  // ─── Derived values ──────────────────────────────────────────────────────────
-
-  const availableVehicles = useMemo(
-    () => state.vehicles.filter((v) => v.status === "available"),
-    [state.vehicles]
-  );
-
-  const soldCount = useMemo(
-    () => state.vehicles.filter((v) => v.status === "sold").length,
-    [state.vehicles]
-  );
-
-  const totalRevenue = useMemo(
-    () => state.transactions
-      .filter((t: any) => t.type === "income")
-      .reduce((sum, t) => sum + Number(t.amount), 0),
-    [state.transactions]
-  );
-
-  const brandDistribution = useMemo((): BrandDistribution[] => {
-    const counts: Record<string, number> = {};
-    state.vehicles.forEach((v) => {
-      counts[v.brand] = (counts[v.brand] ?? 0) + 1;
-    });
-    const total = state.vehicles.length;
-    if (total === 0) return [];
-    return Object.entries(counts)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 6)
-      .map(([name, count]) => ({
-        name,
-        value: Math.round((count / total) * 100),
-      }));
-  }, [state.vehicles]);
-
-  const value: AppContextValue = {
+  const value = {
     ...state,
+    leadsCount: state.leads.length,
+    appointmentsCount: state.appointments.length,
+    refreshData,
     addVehicle,
     updateVehicle,
     deleteVehicle,
-    addTransaction: async (data: any) => {
-      const { error } = await supabase.from('transactions').insert([data]);
-      if (error) throw error;
-      await refreshData();
-    },
-    addLeadAndAppointment: async (leadData: any, appointmentData: any) => {
-      // 1. Crear el Lead
-      const { data: newLead, error: leadError } = await supabase
-        .from('leads')
-        .insert([{
-          name: leadData.name,
-          phone: leadData.phone,
-          message: `Interesado en ${leadData.vehicle_interested}`,
-          status: 'nuevo'
-        }])
-        .select()
-        .single();
-      if (leadError) throw leadError;
-
-      // 2. Crear la Cita vinculada al Lead y al Vehículo
-      const { error: appError } = await supabase
-        .from('appointments')
-        .insert([{
-          user_name: leadData.name,
-          user_phone: leadData.phone,
-          date: appointmentData.appointment_date,
-          time: appointmentData.appointment_time,
-          vehicle_id: appointmentData.vehicle_id,
-          status: 'pendiente'
-        }]);
-      if (appError) throw appError;
-
-      await refreshData();
-    },
+    addTransaction,
+    addLeadAndAppointment,
+    updateLeadStatus,
     getVehicleById,
     incrementViews,
-    refreshData,
-    setAppointmentsCount: (count: number) => setState(prev => ({ ...prev, appointmentsCount: count })),
-    setLeadsCount: (count: number) => setState(prev => ({ ...prev, leadsCount: count })),
     availableVehicles,
     brandDistribution,
     soldCount,
-    transactions: state.transactions,
-    totalRevenue,
-    isLoading: state.isLoading,
+    totalRevenue
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
@@ -334,6 +225,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
 export function useAppContext() {
   const context = useContext(AppContext);
-  if (!context) throw new Error("useAppContext must be used within an AppProvider");
+  if (!context) throw new Error('useAppContext must be used within an AppProvider');
   return context;
 }

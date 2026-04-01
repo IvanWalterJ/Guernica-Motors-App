@@ -82,10 +82,10 @@ export default function ChatWidget() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ duration: 0.2 }}
-            className="fixed bottom-8 right-8 w-[calc(100vw-4rem)] sm:w-[380px] h-[600px] max-h-[80vh] glass-card rounded-3xl shadow-[0_0_40px_rgba(220,38,38,0.2)] border border-white/10 flex flex-col z-50 overflow-hidden"
+            className="fixed bottom-8 right-8 w-[calc(100vw-4rem)] sm:w-[380px] h-[600px] max-h-[80vh] bg-[#0A0A0A] rounded-3xl shadow-[0_0_60px_rgba(0,0,0,0.8)] border border-white/10 flex flex-col z-50 overflow-hidden"
           >
             {/* Header */}
-            <div className="p-6 border-b border-white/10 flex justify-between items-center text-white bg-[#050505]/80 backdrop-blur-md">
+            <div className="p-6 border-b border-white/10 flex justify-between items-center text-white bg-[#0A0A0A]">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full flex items-center justify-center bg-gradient-guernica shadow-[0_0_15px_rgba(220,38,38,0.4)]">
                   <Sparkles className="w-4 h-4 text-white" />
@@ -109,8 +109,8 @@ export default function ChatWidget() {
                 <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                   <div className={`max-w-[85%] p-4 rounded-2xl text-sm font-light leading-relaxed shadow-lg ${
                     msg.role === 'user' 
-                      ? 'bg-gradient-guernica text-white rounded-tr-sm' 
-                      : 'bg-[#111111]/80 backdrop-blur-md border border-white/10 text-gray-200 rounded-tl-sm'
+                      ? 'bg-red-600 text-white rounded-tr-sm' 
+                      : 'bg-[#1A1A1A] border border-white/10 text-gray-200 rounded-tl-sm'
                   }`}>
                     {msg.role === 'model' ? (
                       <div className="prose prose-invert prose-sm max-w-none [&>p]:mb-2 [&>p:last-child]:mb-0 [&>ul]:list-disc [&>ul]:ml-4 [&>ul]:mb-2 [&>strong]:text-white">
@@ -124,7 +124,7 @@ export default function ChatWidget() {
               ))}
               {isLoading && (
                 <div className="flex justify-start">
-                  <div className="bg-[#111111]/80 backdrop-blur-md border border-white/10 text-gray-200 rounded-2xl rounded-tl-sm p-4 shadow-lg">
+                  <div className="bg-[#1A1A1A] border border-white/10 text-gray-200 rounded-2xl rounded-tl-sm p-4 shadow-lg">
                     <Loader2 className="w-4 h-4 text-gray-400 animate-spin" />
                   </div>
                 </div>
