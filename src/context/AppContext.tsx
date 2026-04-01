@@ -164,18 +164,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const addLeadAndAppointment = async (lead: any, appointment: any) => {
-    // Al agendar, el lead siempre entra como 'new' (Nuevo)
-    const { data: leadData, error: leadError } = await supabase
+    // Generate UUID client-side to avoid depending on .select() after insert
+    // (which can fail silently when Supabase RLS blocks the returning SELECT)
+    const leadId = crypto.randomUUID();
+
+    const { error: leadError } = await supabase
       .from('leads')
-      .insert([{ ...lead, status: 'new' }])
-      .select()
-      .single();
+      .insert([{ ...lead, id: leadId, status: 'new' }]);
 
     if (leadError) throw leadError;
 
     const { error: appError } = await supabase
       .from('appointments')
-      .insert([{ ...appointment, lead_id: leadData.id }]);
+      .insert([{ ...appointment, lead_id: leadId }]);
 
     if (appError) throw appError;
 

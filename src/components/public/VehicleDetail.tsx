@@ -33,6 +33,8 @@ export default function VehicleDetail() {
   const [isScheduled, setIsScheduled] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  useEffect(() => { window.scrollTo(0, 0); }, [id]);
+
   const vehicle = getVehicleById(id || "");
   const availableVehicles = vehicles.filter(v => v.status === 'available');
 
