@@ -5,18 +5,24 @@ interface Vehicle {
   id: string;
   brand: string;
   model: string;
-  year: number;
-  price: number;
-  km: number;
-  fuel: string;
-  transmission: string;
-  engine: string;
   version: string;
-  description: string;
-  images: string[];
+  year: number;
   status: 'available' | 'sold' | 'reserved';
-  featured: boolean;
+  condition: '0km' | 'Usado';
+  km: number;
+  price: number;
+  fuel_type: string;
+  transmission: string;
+  doors: number;
+  engine_cc: number;
+  horsepower: number;
+  color_ext: string;
+  color_int: string;
+  description: string;
+  features: string[];
+  photos: string[];
   views: number;
+  daysInStock: number;
   created_at: string;
 }
 
@@ -79,10 +85,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const fetchVehicles = useCallback(async () => {
     const { data } = await supabase.from('vehicles').select('*').order('created_at', { ascending: false });
-    return (data || []).map(v => ({
-      ...v,
-      images: Array.isArray(v.images) ? v.images : JSON.parse(v.images || '[]')
-    })) as Vehicle[];
+    return (data || []).map(v => {
+      // Support both old DB column name (images) and new (photos)
+      const rawPhotos = v.photos ?? v.images;
+      const photos: string[] = Array.isArray(rawPhotos) ? rawPhotos : JSON.parse(rawPhotos || '[]');
+      const features: string[] = Array.isArray(v.features) ? v.features : JSON.parse(v.features || '[]');
+      const daysInStock = v.created_at
+        ? Math.floor((Date.now() - new Date(v.created_at).getTime()) / (1000 * 60 * 60 * 24))
+        : 0;
+      return { ...v, photos, features, daysInStock };
+    }) as Vehicle[];
   }, []);
 
   const fetchLeads = useCallback(async () => {

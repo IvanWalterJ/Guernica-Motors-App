@@ -7,7 +7,6 @@ import {
   ArrowLeft, Share2, Info, X, Clock
 } from "lucide-react";
 import { useAppContext } from "../../context/AppContext";
-import Footer from "./Footer";
 
 const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&q=80&w=800";
 
@@ -71,7 +70,7 @@ export default function VehicleDetail() {
     );
   }
 
-  const photos = vehicle.images && vehicle.images.length > 0 ? vehicle.images : [FALLBACK_IMAGE];
+  const photos = vehicle.photos && vehicle.photos.length > 0 ? vehicle.photos : [FALLBACK_IMAGE];
 
   const handleSchedule = async () => {
     if (!selectedDate || !selectedTime || !clientName || !clientPhone) return;
@@ -162,8 +161,8 @@ export default function VehicleDetail() {
             <section className="grid grid-cols-2 md:grid-cols-4 gap-12 py-12 border-y border-white/5">
               <Spec icon={Calendar} label="Año" value={vehicle.year} />
               <Spec icon={Activity} label="Kilometraje" value={`${vehicle.km.toLocaleString()} km`} />
-              <Spec icon={Fuel} label="Combustible" value={vehicle.fuel} />
-              <Spec icon={Zap} label="Motor" value={vehicle.engine} />
+              <Spec icon={Fuel} label="Combustible" value={vehicle.fuel_type} />
+              <Spec icon={Zap} label="Motor" value={vehicle.engine_cc > 0 ? `${vehicle.engine_cc}cc · ${vehicle.horsepower}CV` : `Eléctrico · ${vehicle.horsepower}CV`} />
             </section>
 
             <section>
@@ -315,7 +314,6 @@ export default function VehicleDetail() {
         )}
       </AnimatePresence>
 
-      <Footer />
     </div>
   );
 }

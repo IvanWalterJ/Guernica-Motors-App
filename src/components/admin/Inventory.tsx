@@ -80,7 +80,7 @@ export default function Inventory() {
     setIsFormOpen(false);
   };
 
-  const handleDelete = (id: number) => {
+  const handleDelete = (id: string) => {
     if (confirm("¿Estás seguro de que deseas eliminar este vehículo?")) {
       deleteVehicle(id);
       if (selectedVehicle?.id === id) setSelectedVehicle(null);

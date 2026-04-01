@@ -7,23 +7,14 @@ import {
   DollarSign,
   ArrowUpRight,
   ArrowDownRight,
-  X,
-  Minus,
-  Plus,
-  Trash2,
-  PencilLine,
 } from "lucide-react";
-import type { ActivityIcon } from "../../context/AppContext";
 import {
-  BarChart,
   Bar,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  LineChart,
-  Line,
   AreaChart,
   Area,
 } from "recharts";
@@ -71,22 +62,6 @@ const VIEWS_DATA = [
   { name: "Range Rover", vistas: 640 },
 ];
 
-const ACTIVITY_ICON_MAP: Record<ActivityIcon, React.ElementType> = {
-  car: Car,
-  dollar: DollarSign,
-  trash: Trash2,
-  edit: PencilLine,
-  users: Users,
-};
-
-const ACTIVITY_ICON_COLOR: Record<ActivityIcon, string> = {
-  car: "text-red-400",
-  dollar: "text-red-400",
-  trash: "text-red-400",
-  edit: "text-red-400",
-  users: "text-red-400",
-};
-
 const PERIOD_OPTIONS = [
   { value: "1w", label: "Última semana" },
   { value: "1m", label: "Último mes" },
@@ -105,45 +80,15 @@ function formatRelativeTime(ms: number): string {
   return days === 1 ? "Ayer" : `Hace ${days} días`;
 }
 
-// Small +/- stepper for editable counters
-function CounterStepper({
-  value,
-  onChange,
-}: {
-  value: number;
-  onChange: (n: number) => void;
-}) {
-  return (
-    <div className="flex items-center gap-2 mt-1">
-      <button
-        onClick={() => onChange(Math.max(0, value - 1))}
-        className="w-6 h-6 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
-      >
-        <Minus className="w-3 h-3 text-white" strokeWidth={2} />
-      </button>
-      <span className="text-xs text-gray-500 w-6 text-center">{value}</span>
-      <button
-        onClick={() => onChange(value + 1)}
-        className="w-6 h-6 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
-      >
-        <Plus className="w-3 h-3 text-white" strokeWidth={2} />
-      </button>
-    </div>
-  );
-}
-
 export default function Dashboard() {
   const {
     vehicles,
     soldCount,
     totalRevenue,
-    brandDistribution,
     leadsCount,
     appointmentsCount,
-    setLeadsCount,
-    setAppointmentsCount,
     availableVehicles,
-    activityLog,
+    leads,
   } = useAppContext();
 
   const [currency, setCurrency] = useState("USD");
@@ -208,7 +153,6 @@ export default function Dashboard() {
       accent: "from-white/5 to-transparent border-white/10 hover:border-white/20",
       iconBg: "bg-white/5 border-white/10",
       iconColor: "text-white",
-      editable: true,
     },
     {
       title: "Citas Agendadas",
@@ -219,7 +163,6 @@ export default function Dashboard() {
       accent: "from-white/5 to-transparent border-white/10 hover:border-white/20",
       iconBg: "bg-white/5 border-white/10",
       iconColor: "text-white",
-      editable: true,
     },
   ];
 
@@ -295,12 +238,6 @@ export default function Dashboard() {
                   <span className="text-sm text-gray-400 font-light">({kpi.amount})</span>
                 )}
               </div>
-              {"editable" in kpi && kpi.editable && (
-                <CounterStepper
-                  value={kpi.title === "Leads Nuevos" ? leadsCount : appointmentsCount}
-                  onChange={kpi.title === "Leads Nuevos" ? setLeadsCount : setAppointmentsCount}
-                />
-              )}
             </div>
           </motion.div>
         ))}
@@ -394,38 +331,34 @@ export default function Dashboard() {
 
       </div>
 
-      {/* Recent Activity */}
+      {/* Recent Leads */}
       <div className="glass-card rounded-2xl overflow-hidden shadow-[0_0_30px_rgba(220,38,38,0.05)]">
         <div className="px-8 py-6 border-b border-white/5 flex justify-between items-center bg-white/[0.02]">
-          <h3 className="text-xs uppercase tracking-widest font-bold text-gray-400">Actividad Reciente</h3>
+          <h3 className="text-xs uppercase tracking-widest font-bold text-gray-400">Leads Recientes</h3>
           <span className="text-[10px] font-bold tracking-widest uppercase text-gray-600">
-            {activityLog.length} eventos
+            {leads.length} total
           </span>
         </div>
         <div className="divide-y divide-white/5">
-          {activityLog.length === 0 ? (
+          {leads.length === 0 ? (
             <div className="px-8 py-12 text-center text-gray-600 text-sm font-light">
-              No hay actividad aún. Agregá, editá o eliminá vehículos para ver el registro.
+              No hay leads aún.
             </div>
           ) : (
-            activityLog.slice(0, 8).map((item) => {
-              const IconComponent = ACTIVITY_ICON_MAP[item.icon];
-              const iconColor = ACTIVITY_ICON_COLOR[item.icon];
-              return (
-                <div key={item.id} className="px-8 py-5 flex items-center gap-6 hover:bg-white/[0.03] transition-colors">
-                  <div className="p-2.5 rounded-full bg-white/5 border border-white/10 flex-shrink-0">
-                    <IconComponent className={`w-4 h-4 ${iconColor}`} strokeWidth={1.5} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-white mb-0.5">{item.action}</p>
-                    <p className="text-xs text-gray-500 font-light truncate">{item.detail}</p>
-                  </div>
-                  <span className="text-[10px] font-bold tracking-widest uppercase text-gray-600 flex-shrink-0">
-                    {formatRelativeTime(item.time)}
-                  </span>
+            leads.slice(0, 8).map((lead) => (
+              <div key={lead.id} className="px-8 py-5 flex items-center gap-6 hover:bg-white/[0.03] transition-colors">
+                <div className="p-2.5 rounded-full bg-white/5 border border-white/10 flex-shrink-0">
+                  <Users className="w-4 h-4 text-red-400" strokeWidth={1.5} />
                 </div>
-              );
-            })
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-white mb-0.5">{lead.name}</p>
+                  <p className="text-xs text-gray-500 font-light truncate">{lead.vehicle_interested ?? lead.message}</p>
+                </div>
+                <span className="text-[10px] font-bold tracking-widest uppercase text-gray-600 flex-shrink-0">
+                  {lead.created_at ? formatRelativeTime(new Date(lead.created_at).getTime()) : ""}
+                </span>
+              </div>
+            ))
           )}
         </div>
       </div>
