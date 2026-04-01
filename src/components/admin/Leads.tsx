@@ -5,11 +5,11 @@ import CustomSelect from "../ui/CustomSelect";
 import { useAppContext } from "../../context/AppContext";
 
 const COLUMNS = [
-  { id: "new", title: "Nuevo", color: "text-white border-white/20 bg-white/5" },
-  { id: "contacted", title: "Contactado", color: "text-blue-400 border-blue-400/20 bg-blue-400/5" },
-  { id: "negotiating", title: "En Negociación", color: "text-purple-400 border-purple-400/20 bg-purple-400/5" },
-  { id: "won", title: "Ganado", color: "text-green-400 border-green-400/20 bg-green-400/5" },
-  { id: "lost", title: "Perdido", color: "text-red-400 border-red-400/20 bg-red-400/5" },
+  { id: "nuevo", title: "Nuevo", color: "text-white border-white/20 bg-white/5" },
+  { id: "contactado", title: "Contactado", color: "text-blue-400 border-blue-400/20 bg-blue-400/5" },
+  { id: "negociando", title: "En Negociación", color: "text-purple-400 border-purple-400/20 bg-purple-400/5" },
+  { id: "ganado", title: "Ganado", color: "text-green-400 border-green-400/20 bg-green-400/5" },
+  { id: "perdido", title: "Perdido", color: "text-red-400 border-red-400/20 bg-red-400/5" },
 ];
 
 export default function Leads() {

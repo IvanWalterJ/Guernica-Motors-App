@@ -110,6 +110,12 @@ export default function Appointments() {
                         <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500 uppercase tracking-widest font-bold">
                           <span className="flex items-center gap-2"><Phone className="w-3 h-3" /> {apt.user_phone}</span>
                           <span className="flex items-center gap-2 text-white"><Clock className="w-3 h-3 text-red-600" /> {apt.time} HS</span>
+                          {apt.date && (
+                            <span className="flex items-center gap-2 text-red-400">
+                              <Calendar className="w-3 h-3" />
+                              {new Date(apt.date + 'T12:00:00').toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric', month: 'short' }).toUpperCase()}
+                            </span>
+                          )}
                         </div>
                         {vehicle && (
                           <div className="mt-4 flex items-center gap-3 bg-white/5 px-3 py-1.5 rounded-lg border border-white/5 w-fit">
