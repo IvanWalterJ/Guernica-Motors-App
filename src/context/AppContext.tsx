@@ -192,8 +192,34 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (appError) throw appError;
     }
 
+    // Notificar a n8n (fire & forget — si n8n no está corriendo, la reserva igual se guarda)
+    const vehicle = lead.vehicle_id
+      ? state.vehicles.find(v => v.id === lead.vehicle_id)
+      : null;
+
+    const webhookPayload = {
+      name: lead.name,
+      phone: lead.phone ?? '',
+      message: lead.message ?? '',
+      vehicle_brand: vehicle?.brand ?? null,
+      vehicle_model: vehicle?.model ?? null,
+      vehicle_year: vehicle?.year ?? null,
+      vehicle_price: vehicle?.price ?? null,
+      date: appointment?.date ?? '',
+      time: appointment?.time ?? '',
+    };
+
+    // Si hay turno → webhook de reserva; si es solo consulta → webhook de lead
+    const webhookPath = appointment ? 'gm-nueva-reserva' : 'gm-nuevo-lead';
+    fetch('http://localhost:5678/webhook/' + webhookPath, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(webhookPayload),
+    }).catch(() => {});
+
     await refreshData(true);
   };
+
 
   const updateLeadStatus = async (id: string, status: string) => {
     const { error } = await supabase
